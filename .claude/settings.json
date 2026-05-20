@@ -11,6 +11,10 @@
           {
             "type": "command",
             "command": ".claude/scripts/prevent-secrets.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/scripts/validate-rm.sh"
           }
         ]
       }
