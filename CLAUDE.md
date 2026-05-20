@@ -45,7 +45,8 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 ├── scripts/
 │   └── start-all.js                  ← Local dev: starts all servers
 ├── docker-compose.yml                ← Docker orchestration
-├── adding-new-server.md              ← Guide for new servers
+├── docs/                             ← Documentation
+│   └── adding-new-server.md          ← Guide for new servers
 └── .env.example                      ← Environment template
 ```
 
@@ -120,4 +121,4 @@ claude mcp add duckduckgo-search --transport http --scope user http://localhost:
 
 - Keep this `CLAUDE.md` in sync after every structural change
 - `README.md` is the public-facing summary
-- Update `adding-new-server.md` with any process improvements
+- `docs/adding-new-server.md` contains the guide for adding new servers
