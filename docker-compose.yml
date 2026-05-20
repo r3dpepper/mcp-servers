@@ -1,0 +1,73 @@
+version: "3.9"
+
+# ── MCP Hub — Docker Compose ─────────────────────────────────────────────────
+#
+# Usage:
+#   cp .env.example .env.local
+#   # fill in your API keys in .env.local
+#   docker compose --env-file .env.local up --build
+#
+# To run a single server:
+#   docker compose --env-file .env.local up google-search
+#   docker compose --env-file .env.local up duckduckgo-search
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Google Search MCP Server (requires API key) ──────────────────────────
+  google-search:
+    build:
+      context: ..
+      dockerfile: docker/google-search/Dockerfile
+    container_name: mcp-google-search
+    restart: unless-stopped
+    ports:
+      - "${GOOGLE_SEARCH_PORT:-3001}:3001"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_CSE_ID: ${GOOGLE_CSE_ID}
+      GOOGLE_SEARCH_MAX_RESULTS: ${GOOGLE_SEARCH_MAX_RESULTS:-10}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "google-search"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "true"
+
+  # ── DuckDuckGo Search MCP Server (no API key needed) ────────────────────
+  duckduckgo-search:
+    build:
+      context: ..
+      dockerfile: docker/duckduckgo-search/Dockerfile
+    container_name: mcp-duckduckgo-search
+    restart: unless-stopped
+    ports:
+      - "${DUCKDUCKGO_SEARCH_PORT:-3002}:3002"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DUCKDUCKGO_SEARCH_MAX_RESULTS: ${DUCKDUCKGO_SEARCH_MAX_RESULTS:-10}
+      DUCKDUCKGO_TIMEOUT_MS: ${DUCKDUCKGO_TIMEOUT_MS:-10000}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "duckduckgo-search"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
+# ── Shared network so servers can discover each other ─────────────────────
+networks:
+  default:
+    name: mcp-hub-network

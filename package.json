@@ -1,0 +1,17 @@
+{
+  "name": "@mcp-hub/hub",
+  "version": "1.0.0",
+  "description": "MCP Hub — Multi-server MCP orchestration",
+  "private": true,
+  "workspaces": [
+    "servers/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/start-all.js",
+    "build": "npm run build --workspaces",
+    "start": "node scripts/start-all.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

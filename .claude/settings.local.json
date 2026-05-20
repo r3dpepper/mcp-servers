@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node dist/index.js)",
+      "Bash(curl -s http://localhost:3002/health)",
+      "Bash(jq)",
+      "Bash(curl -s -X POST http://localhost:3002/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}')",
+      "Bash(curl -s -X POST http://localhost:3002/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}')",
+      "Bash(curl *)",
+      "Bash(npm install *)",
+      "Bash(npm ls *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

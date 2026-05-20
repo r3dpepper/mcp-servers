@@ -1,0 +1,62 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// claude_desktop_config.json — MCP Hub
+//
+// Copy the section(s) you need into your actual Claude Desktop config:
+//   macOS:   ~/Library/Application Support/Claude/claude_desktop_config.json
+//   Windows: %APPDATA%\Claude\claude_desktop_config.json
+//
+// The file must be valid JSON (no comments in the real file).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Option A: HTTP transport (servers running locally or on AWS) ─────────────
+// Requires the server to be running before Claude Desktop starts.
+{
+  "mcpServers": {
+    "google-search": {
+      "url": "http://localhost:3001/mcp"
+    }
+
+    // Add future servers below, e.g.:
+    // "brave-search": {
+    //   "url": "http://localhost:3002/mcp"
+    // }
+  }
+}
+
+// ── Option B: STDIO transport (Claude manages the process) ───────────────────
+// Claude Desktop spawns the Node.js process itself — no need to start it manually.
+// The server must be built first: cd servers/google-search && npm run build
+{
+  "mcpServers": {
+    "google-search": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/mcp-hub/servers/google-search/dist/index.js",
+        "--stdio"
+      ],
+      "env": {
+        "GOOGLE_API_KEY": "your_google_api_key_here",
+        "GOOGLE_CSE_ID": "your_custom_search_engine_id_here",
+        "TRANSPORT": "stdio"
+      }
+    }
+  }
+}
+
+// ── Option C: AWS hosted (HTTP transport pointing at your AWS server) ─────────
+{
+  "mcpServers": {
+    "google-search": {
+      "url": "http://YOUR_ECS_PUBLIC_IP:3001/mcp"
+    }
+  }
+}
+
+// ── Option D: AWS with ALB + custom domain + HTTPS ───────────────────────────
+{
+  "mcpServers": {
+    "google-search": {
+      "url": "https://mcp.yourdomain.com/google-search/mcp"
+    }
+  }
+}
