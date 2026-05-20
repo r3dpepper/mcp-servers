@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": ".claude/scripts/validate-docker.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/scripts/prevent-secrets.sh"
           }
         ]
       }
@@ -23,13 +27,16 @@
       "Bash(curl *)",
       "Bash(npm install *)",
       "Bash(npm ls *)",
+      "Bash(npm audit *)",
       "Bash(git init *)",
       "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(chmod +x *)",
       "WebSearch",
       "mcp__duckduckgo-search__duckduckgo_search",
-      "mcp__duckduckgo-search__duckduckgo_instant_answer",
-      "Bash(git commit -m 'Update commit skill format *)",
-      "Bash(chmod +x *)"
+      "mcp__duckduckgo-search__duckduckgo_instant_answer"
     ]
   }
 }

@@ -22,7 +22,7 @@ function optionalEnvInt(key: string, fallback: number): number {
 
 export const config = {
   port: optionalEnvInt("DUCKDUCKGO_SEARCH_PORT", 3002),
-  maxResults: Math.min(optionalEnvInt("DUCKDUCKGO_SEARCH_MAX_RESULTS", 10), 10),
+  maxResults: Math.min(optionalEnvInt("DUCKDUCKGO_SEARCH_MAX_RESULTS", 10), 50),
   requestTimeoutMs: optionalEnvInt("DUCKDUCKGO_TIMEOUT_MS", 10000),
   transport: optionalEnv("TRANSPORT", "http") as "stdio" | "http",
   nodeEnv: optionalEnv("NODE_ENV", "development"),

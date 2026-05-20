@@ -260,19 +260,33 @@ function stripTags(html: string): string {
     .trim();
 }
 
+function isValidHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 function extractRealUrl(rawUrl: string): string {
   // DDG sometimes uses //duckduckgo.com/l/?uddg=<encoded-url>
   const uddgMatch = rawUrl.match(/[?&]uddg=([^&]+)/);
   if (uddgMatch) {
     try {
-      return decodeURIComponent(uddgMatch[1]);
+      const decoded = decodeURIComponent(uddgMatch[1]);
+      // Validate the decoded URL - prevent javascript: and data: URLs
+      if (isValidHttpUrl(decoded)) {
+        return decoded;
+      }
+      return rawUrl;
     } catch {
       return rawUrl;
     }
   }
-  // Already a real URL
-  if (rawUrl.startsWith("http")) return rawUrl;
-  return rawUrl;
+  // Already a real URL - validate it's http/https
+  if (isValidHttpUrl(rawUrl)) return rawUrl;
+  return "";
 }
 
 // ── Combined search (used by tools) ──────────────────────────────────────────

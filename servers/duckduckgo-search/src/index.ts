@@ -25,7 +25,7 @@ function createMcpServer() {
       description: "Search the web using DuckDuckGo. No API key required.",
       inputSchema: z.object({
         query: z.string().min(1).max(512),
-        num_results: z.number().int().min(1).max(20).optional().default(10),
+        num_results: z.number().int().min(1).max(50).optional().default(10),
       }),
     },
     async ({ query, num_results }) => {
@@ -220,10 +220,21 @@ if (useStdio) {
   }
 }
 
+const MAX_BODY_SIZE = 1024 * 1024; // 1MB max request size
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", (chunk) => chunks.push(chunk));
+    let totalSize = 0;
+
+    req.on("data", (chunk) => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_BODY_SIZE) {
+        return reject(new Error("Request body too large"));
+      }
+      chunks.push(chunk);
+    });
+
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });

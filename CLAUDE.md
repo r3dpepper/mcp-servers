@@ -74,7 +74,8 @@ cd servers/duckduckgo-search && npm run dev
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DUCKDUCKGO_SEARCH_PORT` | 3002 | DuckDuckGo server port |
-| `DUCKDUCKGO_SEARCH_MAX_RESULTS` | 10 | Max results per search |
+| `DUCKDUCKGO_SEARCH_MAX_RESULTS` | 10 | Max results per search (max: 50) |
+| `DUCKDUCKGO_TIMEOUT_MS` | 10000 | Request timeout in milliseconds |
 | `TRANSPORT` | http | `http` or `stdio` |
 | `NODE_ENV` | development | Environment |
 | `LOG_LEVEL` | info | Logging level |
