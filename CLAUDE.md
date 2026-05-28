@@ -14,6 +14,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 | Server | Port | Tools | API Key |
 |--------|------|-------|---------|
 | `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No |
+| `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No |
 
 ---
 

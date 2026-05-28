@@ -21,6 +21,13 @@ const SERVERS = [
     dir: resolve(ROOT, "servers/duckduckgo-search"),
     color: "\x1b[36m", // cyan
   },
+  {
+    name: "browser",
+    enabledEnv: "BROWSER_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/browser"),
+    color: "\x1b[35m", // magenta
+  },
   // Add new servers here:
   // {
   //   name: "github",

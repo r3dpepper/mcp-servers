@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ── MCP Hub — Docker Compose ─────────────────────────────────────────────────
 #
 # Usage:
@@ -17,7 +15,7 @@ services:
   # ── Google Search MCP Server (requires API key) ──────────────────────────
   google-search:
     build:
-      context: ..
+      context: .
       dockerfile: docker/google-search/Dockerfile
     container_name: mcp-google-search
     restart: unless-stopped
@@ -44,7 +42,7 @@ services:
   # ── DuckDuckGo Search MCP Server (no API key needed) ────────────────────
   duckduckgo-search:
     build:
-      context: ..
+      context: .
       dockerfile: docker/duckduckgo-search/Dockerfile
     container_name: mcp-duckduckgo-search
     restart: unless-stopped
@@ -64,6 +62,34 @@ services:
       start_period: 10s
     labels:
       mcp.server: "duckduckgo-search"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
+  # ── Browser MCP Server (no API key needed) ────────────────────────────────
+  browser:
+    build:
+      context: docker/browser
+      dockerfile: docker/browser/Dockerfile
+    container_name: mcp-browser
+    restart: unless-stopped
+    ports:
+      - "${BROWSER_PORT:-3003}:3003"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      BROWSER_MAX_CONTEXTS: ${BROWSER_MAX_CONTEXTS:-3}
+      BROWSER_CONTEXT_TIMEOUT: ${BROWSER_CONTEXT_TIMEOUT:-30000}
+      BROWSER_NAV_TIMEOUT: ${BROWSER_NAV_TIMEOUT:-15000}
+      BROWSER_TIMEOUT_MS: ${BROWSER_TIMEOUT_MS:-10000}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "browser"
       mcp.version: "1.0.0"
       mcp.requires_api_key: "false"
 

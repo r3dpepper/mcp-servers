@@ -1,24 +1,53 @@
-# Adding a New MCP Server
+# Adding a New MCP Server - Comprehensive Guide
 
-This guide explains how to add a new MCP server to the hub, following the
-exact same patterns as `duckduckgo-search`.
+This guide explains how to add a new MCP server to the hub, following the exact same patterns as `duckduckgo-search`, with additional considerations for design, optimization, and verification.
 
 ---
 
 ## Overview
 
-Adding a server involves 4 things:
+Adding a server involves 4 core things:
+1. Server source code (`servers/<name>/`)
+2. Docker image (`docker/<name>/Dockerfile`)
+3. Registration in start-all.js (`scripts/start-all.js`)
+4. Registration in docker-compose.yml (`docker-compose.yml`)
 
-| # | What | Where |
-|---|------|-------|
-| 1 | Server source code | `servers/<name>/` |
-| 2 | Docker image | `docker/<name>/Dockerfile` |
-| 3 | Register in start-all.js | `scripts/start-all.js` |
-| 4 | Register in docker-compose.yml | `docker-compose.yml` |
+Plus documentation updates and verification steps.
 
 ---
 
-## Step 1 — Copy the template
+## Design Considerations
+
+Before starting, consider these architectural decisions that make MCP servers maintainable and efficient:
+
+### Key Design Decisions
+- **Modularity**: Separate concerns (configuration, logging, core logic, tools) for maintainability.
+- **Transport Agnosticism**: The server supports both STDIO (local) and HTTP (remote) via `TRANSPORT` env var.
+- **Error Handling**: Tools return structured errors (`isError: true`) instead of throwing.
+- **Validation**: All tool inputs validated with Zod schemas.
+- **Logging**: Uses a structured logger (JSON in production, human-readable in development).
+- **Resource Efficiency**: Avoids heavy dependencies; uses lightweight HTTP clients (e.g., native `fetch` or `undici`).
+
+### Server Component Interaction
+```mermaid
+graph TD
+    A[MCP Client (e.g., Claude Code)] -->|JSON-RPC 2.0| B(MCP Server)
+    B --> C[Server Entry Point (index.ts)]
+    C --> D[Tool Registration]
+    D --> E[Tool 1: <tool-name>]
+    D --> F[Tool 2: <another-tool>]
+    E --> G[Core Logic: <server-name>-client.ts]
+    F --> G
+    G --> H[External API/Service]
+    C --> I[Configuration: config.ts]
+    C --> J[Logging: logger.ts]
+    I --> K[Environment Variables]
+    J --> L[Log Output]
+```
+
+---
+
+## Step 1 — Copy the Template
 
 The fastest way to start is to copy the `duckduckgo-search` server:
 
@@ -42,7 +71,7 @@ port: optionalEnvInt("YOUR_SERVER_PORT", 3003),   // ← new unique port
 
 ---
 
-## Step 2 — Build your tools
+## Step 2 — Build Your Tools
 
 Each tool is a file in `src/tools/`. A tool has four parts:
 
@@ -106,7 +135,7 @@ export { myTool } from "./my-tool.js";
 
 ---
 
-## Step 3 — Write an API client (if needed)
+## Step 3 — Write an API Client (if needed)
 
 If your server calls an external API, create `src/<service>-client.ts`. Keep it separate from tool logic.
 
@@ -168,7 +197,7 @@ your-server:
 
 ---
 
-## Step 7 — Update documentation
+## Step 7 — Update Documentation
 
 Update the server tables in `CLAUDE.md` and `README.md`:
 
@@ -181,7 +210,34 @@ Update the server tables in `CLAUDE.md` and `README.md`:
 
 ---
 
-## Test your new server
+## Step 8 — Optimization for Resource Constraints (M1 Mac 16GB RAM)
+
+To respect memory limitations:
+
+### Dependency Audit
+- Ensure `package.json` only includes necessary dependencies
+- Avoid heavy libraries like Chromium puppeteer unless essential
+- Prefer native `fetch` or lightweight `undici` over bulky HTTP clients
+
+### Lazy Loading
+- Initialize resources (e.g., database connections) only when needed
+- Don't create expensive objects at startup unless required
+
+### Caching
+- Implement in-memory caching for frequent requests (e.g., using simple Map with TTL)
+- Reduces external API calls and improves response times
+
+### Connection Pooling
+- Reuse HTTP client instances instead of creating new ones per request
+- Use connection pools where appropriate
+
+### Resource Monitoring
+- Add basic memory usage logging in development to catch leaks early
+- Monitor with `process.memoryUsage()` in Node.js
+
+---
+
+## Step 9 — Test Your New Server
 
 ```bash
 # Start just your server
@@ -206,13 +262,52 @@ curl -s -X POST http://localhost:3003/mcp \
 
 ---
 
-## Ideas for servers to add
+## Step 10 — Test in Claude Code
 
-| Server | Port | Suggested tools |
+```bash
+claude mcp add your-server --transport http --scope user http://localhost:3003/mcp
+```
+
+Verify the tools are discoverable and functional in Claude Chat.
+
+---
+
+## Verification Checklist
+
+Before considering the task complete, verify:
+
+- [ ] All linting passes (`npm run lint` if configured)
+- [ ] Server builds successfully (`npm run build`)
+- [ ] Health check endpoint returns 200 OK
+- [ ] Each tool returns expected responses for valid inputs
+- [ ] Tools return structured errors (`isError: true`) for invalid inputs
+- [ ] Server starts and shuts down gracefully with SIGINT/SIGTERM
+- [ ] Server works in both HTTP and STDIO transports (test by setting `TRANSPORT=stdio`)
+- [ ] Docker container builds and runs successfully (if Docker support added)
+- [ ] Server is discoverable and usable in Claude Code after adding via `claude mcp add`
+- [ ] No excessive memory usage observed during testing
+
+---
+
+## Ideas for Servers to Add
+
+| Server | Port | Suggested Tools |
 |--------|------|----------------|
-| `brave-search` | 3003 | `brave_search`, `brave_news` |
-| `github` | 3004 | `search_repos`, `get_issue`, `list_prs` |
-| `slack` | 3005 | `send_message`, `list_channels`, `search_messages` |
-| `filesystem` | 3006 | `read_file`, `write_file`, `list_directory` |
-| `postgres` | 3007 | `run_query`, `list_tables`, `describe_table` |
-| `weather` | 3008 | `get_current_weather`, `get_forecast` |
+| `brave-search` | 3004 | `brave_search`, `brave_news` |
+| `github` | 3005 | `search_repos`, `get_issue`, `list_prs` |
+| `slack` | 3006 | `send_message`, `list_channels`, `search_messages` |
+| `filesystem` | 3007 | `read_file`, `write_file`, `list_directory` |
+| `postgres` | 3008 | `run_query`, `list_tables`, `describe_table` |
+| `weather` | 3009 | `get_current_weather`, `get_forecast` |
+| `browser` | 3010 | `screenshot`, `navigate`, `click`, `fill_form` |
+
+---
+
+## Notes
+
+- Replace `<server-name>`, `<tool-name>`, etc., with actual names during implementation.
+- Follow the project's commit conventions when saving changes.
+- Keep the server focused: one well-defined purpose per server is better than a jack-of-all-trades.
+- This guide combines practical steps with architectural considerations to help you create robust, efficient MCP servers.
+
+This document serves as both a step-by-step guide and a reference for best practices when adding new MCP servers to the hub.
