@@ -15,6 +15,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 |--------|------|-------|---------|
 | `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No |
 | `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No |
+| `filesystem` | 3004 | `filesystem_list_allowed` (wrapper) | No |
 
 ---
 
@@ -112,8 +113,17 @@ curl -s -X POST http://localhost:3002/mcp \
 
 ## Connecting to Claude Code
 
+Register the MCP servers with Claude Code using the `claude mcp add` command:
+
 ```bash
+# DuckDuckGo Search
 claude mcp add duckduckgo-search --transport http --scope user http://localhost:3002/mcp
+
+# Browser Automation
+claude mcp add browser --transport http --scope user http://localhost:3003/mcp
+
+# Filesystem
+claude mcp add filesystem --transport http --scope user http://localhost:3004/mcp
 ```
 
 ---

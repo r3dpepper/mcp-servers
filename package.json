@@ -13,5 +13,8 @@
   },
   "devDependencies": {
     "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server-filesystem": "^2026.1.14"
   }
 }

@@ -28,13 +28,20 @@ const SERVERS = [
     dir: resolve(ROOT, "servers/browser"),
     color: "\x1b[35m", // magenta
   },
+  {
+    name: "filesystem",
+    enabledEnv: "FILESYSTEM_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/filesystem"),
+    color: "\x1b[33m", // yellow
+  },
   // Add new servers here:
   // {
   //   name: "github",
   //   enabledEnv: "GITHUB_ENABLED",
   //   defaultEnabled: true,
   //   dir: resolve(ROOT, "servers/github"),
-  //   color: "\x1b[33m", // yellow
+  //   color: "\x1b[32m", // green
   // },
 ];
 
