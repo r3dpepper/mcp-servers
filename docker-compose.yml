@@ -93,6 +93,33 @@ services:
       mcp.version: "1.0.0"
       mcp.requires_api_key: "false"
 
+  # ── Fetch MCP Server (no API key needed) ────────────────────────────────
+  fetch:
+    build:
+      context: .
+      dockerfile: docker/fetch/Dockerfile
+    container_name: mcp-fetch
+    restart: unless-stopped
+    ports:
+      - "${FETCH_PORT:-3005}:3005"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      FETCH_PORT: 3005
+      FETCH_TIMEOUT_MS: ${FETCH_TIMEOUT_MS:-30000}
+      FETCH_MAX_CONTENT_LENGTH: ${FETCH_MAX_CONTENT_LENGTH:-1048576}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "fetch"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
 # ── Shared network so servers can discover each other ─────────────────────
 networks:
   default:

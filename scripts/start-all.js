@@ -35,6 +35,13 @@ const SERVERS = [
     dir: resolve(ROOT, "servers/filesystem"),
     color: "\x1b[33m", // yellow
   },
+  {
+    name: "fetch",
+    enabledEnv: "FETCH_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/fetch"),
+    color: "\x1b[32m", // green
+  },
   // Add new servers here:
   // {
   //   name: "github",
@@ -54,7 +61,7 @@ function startServer(server) {
 
   console.log(`${server.color}▶ ${server.name}\x1b[0m starting...`);
 
-  const proc = spawn("npm", ["run", "dev"], {
+  const proc = spawn("npm run dev", {
     cwd: server.dir,
     shell: true,
     stdio: ["ignore", "pipe", "pipe"],

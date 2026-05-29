@@ -8,6 +8,10 @@
   ],
   "scripts": {
     "dev": "node scripts/start-all.js",
+    "stop": "node scripts/stop-all.js",
+    "stop-browser": "node scripts/stop-all.js",
+    "stop-filesystem": "node scripts/stop-all.js",
+    "stop-fetch": "node scripts/stop-all.js",
     "build": "npm run build --workspaces",
     "start": "node scripts/start-all.js"
   },
@@ -15,6 +19,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@modelcontextprotocol/server-filesystem": "^2026.1.14"
+    "@modelcontextprotocol/server-filesystem": "^2026.1.14",
+    "dotenv": "^17.4.2"
   }
 }

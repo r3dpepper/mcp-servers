@@ -16,6 +16,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 | `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No |
 | `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No |
 | `filesystem` | 3004 | `filesystem_list_allowed` (wrapper) | No |
+| `fetch` | 3005 | `fetch_url` | No |
 
 ---
 
@@ -62,6 +63,14 @@ npm install
 
 # Start all enabled servers
 npm run dev
+
+# Stop all running servers
+npm run stop
+
+# Stop a specific server
+npm run stop-browser      # Stop only the browser server
+npm run stop-filesystem   # Stop only the filesystem server
+npm run stop-fetch        # Stop only the fetch server
 
 # Build all servers
 npm run build
@@ -124,6 +133,9 @@ claude mcp add browser --transport http --scope user http://localhost:3003/mcp
 
 # Filesystem
 claude mcp add filesystem --transport http --scope user http://localhost:3004/mcp
+
+# Fetch
+claude mcp add fetch --transport http --scope user http://localhost:3005/mcp
 ```
 
 ---
