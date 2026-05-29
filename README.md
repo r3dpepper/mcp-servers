@@ -7,8 +7,8 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 | Server | Port | Tools | API Key Required |
 |--------|------|-------|------------------|
 | `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No |
-| `google-search` (template) | 3001 | `google_search`, `google_image_search` | Yes |
-| `github` (planned) | 3003 | `search_repos`, `get_issue` | Yes |
+| `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No |
+| `filesystem` | 3004 | `read_text_file`, `read_media_file`, `read_multiple_files`, `write_file`, `edit_file`, `create_directory`, `list_directory`, `directory_tree`, `move_file`, `search_files`, `get_file_info`, `list_allowed_directories` | No |
 
 ## Quick Start
 

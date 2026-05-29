@@ -24,7 +24,7 @@ function optionalEnvInt(key: string, fallback: number): number {
 export const config = {
   port: optionalEnvInt("FILESYSTEM_PORT", 3004),
   // Filesystem-specific configs
-  allowedPaths: optionalEnv("FILESYSTEM_ALLOWED_PATHS", "/tmp").split(","),
+  allowedPaths: optionalEnv("FILESYSTEM_ALLOWED_PATHS", "~/Learning/projects/mcp-servers").split(","),
   maxFileSizeBytes: optionalEnvInt("FILESYSTEM_MAX_FILE_SIZE", 1024 * 1024), // 1MB
   maxFilesListed: optionalEnvInt("FILESYSTEM_MAX_FILES_LISTED", 100),
   // Transport and logging

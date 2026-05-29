@@ -12,8 +12,25 @@ import { spawn } from "child_process";
 import { z } from "zod";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
+import fs from "fs/promises";
+import path from "path";
+import { minimatch } from "minimatch";
+import { normalizePath, expandHome } from "@modelcontextprotocol/server-filesystem/dist/path-utils.js";
+import {
+  formatSize,
+  validatePath,
+  getFileStats,
+  readFileContent,
+  writeFileContent,
+  searchFilesWithValidation,
+  applyFileEdits,
+  tailFile,
+  headFile,
+  setAllowedDirectories
+} from "@modelcontextprotocol/server-filesystem/dist/lib.js";
 
-const SESSION_IDS = new Set<string>();
+// Initialize allowed directories
+setAllowedDirectories(config.allowedPaths);
 
 function createMcpServer() {
   const server = new McpServer({
@@ -21,11 +38,11 @@ function createMcpServer() {
     version: "1.0.0",
   });
 
-  // Return the official server-info tool for discovery
+  // List allowed directories tool
   server.registerTool(
-    "filesystem_list_allowed",
+    "list_allowed_directories",
     {
-      description: "List the directories that are allowed for filesystem access",
+      description: "Returns the list of directories that this server is allowed to access",
       inputSchema: z.object({}),
     },
     async () => {
@@ -38,9 +55,111 @@ function createMcpServer() {
     }
   );
 
+  // Read file tool
+  server.registerTool(
+    "read_file",
+    {
+      description: "Read the complete contents of a file as text",
+      inputSchema: z.object({
+        path: z.string(),
+        tail: z.number().optional().describe("Return only the last N lines"),
+        head: z.number().optional().describe("Return only the first N lines"),
+      }),
+    },
+    async ({ path: filePath, tail, head }) => {
+      const validPath = await validatePath(filePath);
+      let content;
+      if (tail) {
+        content = await tailFile(validPath, tail);
+      } else if (head) {
+        content = await headFile(validPath, head);
+      } else {
+        content = await readFileContent(validPath);
+      }
+      return {
+        content: [{ type: "text", text: content }],
+      };
+    }
+  );
+
+  // Write file tool
+  server.registerTool(
+    "write_file",
+    {
+      description: "Create a new file or completely overwrite an existing file",
+      inputSchema: z.object({
+        path: z.string(),
+        content: z.string(),
+      }),
+    },
+    async ({ path: filePath, content }) => {
+      const validPath = await validatePath(filePath);
+      await writeFileContent(validPath, content);
+      return {
+        content: [{ type: "text", text: `Successfully wrote to ${filePath}` }],
+      };
+    }
+  );
+
+  // List directory tool
+  server.registerTool(
+    "list_directory",
+    {
+      description: "Get a detailed listing of all files and directories in a specified path",
+      inputSchema: z.object({
+        path: z.string(),
+      }),
+    },
+    async ({ path: dirPath }) => {
+      const validPath = await validatePath(dirPath);
+      const entries = await fs.readdir(validPath, { withFileTypes: true });
+      const formatted = entries
+        .map((entry) => `${entry.isDirectory() ? "[DIR]" : "[FILE]"} ${entry.name}`)
+        .join("\n");
+      return {
+        content: [{ type: "text", text: formatted }],
+      };
+    }
+  );
+
+  // Create directory tool
+  server.registerTool(
+    "create_directory",
+    {
+      description: "Create a new directory or ensure a directory exists",
+      inputSchema: z.object({
+        path: z.string(),
+      }),
+    },
+    async ({ path: dirPath }) => {
+      const validPath = await validatePath(dirPath);
+      await fs.mkdir(validPath, { recursive: true });
+      return {
+        content: [{ type: "text", text: `Successfully created directory ${dirPath}` }],
+      };
+    }
+  );
+
+  // Delete file tool
+  server.registerTool(
+    "delete_file",
+    {
+      description: "Delete a file at the specified path",
+      inputSchema: z.object({
+        path: z.string(),
+      }),
+    },
+    async ({ path: filePath }) => {
+      const validPath = await validatePath(filePath);
+      await fs.unlink(validPath);
+      return {
+        content: [{ type: "text", text: `Successfully deleted ${filePath}` }],
+      };
+    }
+  );
+
   return server;
 }
-
 const useStdio =
   process.argv.includes("--stdio") || config.transport === "stdio";
 
