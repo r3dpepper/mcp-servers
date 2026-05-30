@@ -9,9 +9,14 @@
   "scripts": {
     "dev": "node scripts/start-all.js",
     "stop": "node scripts/stop-all.js",
-    "stop-browser": "node scripts/stop-all.js",
-    "stop-filesystem": "node scripts/stop-all.js",
-    "stop-fetch": "node scripts/stop-all.js",
+    "stop-browser": "node scripts/stop-browser.js",
+    "stop-filesystem": "node scripts/stop-filesystem.js",
+    "stop-fetch": "node scripts/stop-fetch.js",
+    "stop-memory": "node scripts/stop-memory.js",
+    "start-memory": "cd servers/memory && npm run dev",
+    "start-browser": "cd servers/browser && npm run dev",
+    "start-filesystem": "cd servers/filesystem && npm run dev",
+    "start-fetch": "cd servers/fetch && npm run dev",
     "build": "npm run build --workspaces",
     "start": "node scripts/start-all.js"
   },

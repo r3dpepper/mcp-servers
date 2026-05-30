@@ -175,10 +175,33 @@ if (useStdio) {
       }
 
       if (req.url === "/mcp" || req.url === "/") {
+        // Check for required Accept header
+        const acceptHeader = req.headers['accept'];
+        if (!acceptHeader || !acceptHeader.includes('application/json') || !acceptHeader.includes('text/event-stream')) {
+          logger.warn('Missing or invalid Accept header', {
+            url: req.url,
+            accept: acceptHeader,
+            method: req.method
+          });
+          if (!res.headersSent) {
+            res.writeHead(406, { "Content-Type": "application/json" }); // 406 Not Acceptable
+            res.end(JSON.stringify({
+              jsonrpc: "2.0",
+              error: {
+                code: -32603,
+                message: "Not Acceptable: Client must accept both application/json and text/event-stream"
+              },
+              id: null
+            }));
+          }
+          return;
+        }
+
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: undefined,
         });
         res.on("close", () => transport.close());
+        logger.debug('Starting MCP connection', { url: req.url, accept: acceptHeader });
         try {
           const server = createMcpServer();
           await server.connect(transport);
@@ -188,10 +211,10 @@ if (useStdio) {
           });
           await transport.handleRequest(req, res, body);
         } catch (err) {
-          logger.error("MCP request error", { err });
+          logger.error("MCP request error", { err, url: req.url, method: req.method });
           if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Internal server error" }));
+            res.end(JSON.stringify({ error: "Internal error" }));
           }
         }
         return;

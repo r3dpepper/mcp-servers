@@ -42,14 +42,13 @@ const SERVERS = [
     dir: resolve(ROOT, "servers/fetch"),
     color: "\x1b[32m", // green
   },
-  // Add new servers here:
-  // {
-  //   name: "github",
-  //   enabledEnv: "GITHUB_ENABLED",
-  //   defaultEnabled: true,
-  //   dir: resolve(ROOT, "servers/github"),
-  //   color: "\x1b[32m", // green
-  // },
+  {
+    name: "memory",
+    enabledEnv: "MEMORY_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/memory"),
+    color: "\x1b[35m", // magenta
+  },
 ];
 
 function startServer(server) {

@@ -52,8 +52,11 @@ graph TD
 The fastest way to start is to copy the `duckduckgo-search` server:
 
 ```bash
+# Copy the entire server directory
 cp -r servers/duckduckgo-search servers/<your-server-name>
 ```
+
+**Important:** Keep the `.env.example` file in the project root to maintain centralized environment configuration. Do NOT copy it to individual server directories.
 
 Then rename the package in `servers/<your-server-name>/package.json`:
 

@@ -17,6 +17,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 | `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No |
 | `filesystem` | 3004 | `filesystem_list_allowed` (wrapper) | No |
 | `fetch` | 3005 | `fetch_url` | No |
+| `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No |
 
 ---
 
@@ -136,6 +137,9 @@ claude mcp add filesystem --transport http --scope user http://localhost:3004/mc
 
 # Fetch
 claude mcp add fetch --transport http --scope user http://localhost:3005/mcp
+
+# Memory
+claude mcp add memory --transport http --scope user http://localhost:3006/mcp
 ```
 
 ---
