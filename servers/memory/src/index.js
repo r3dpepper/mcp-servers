@@ -22,6 +22,9 @@ const store = {
   relations: {},
 };
 
+// Track current transport to prevent multiple connections
+let currentTransport = null;
+
 async function init() {
   try {
     await mkdir(join(DB_PATH, ".."), { recursive: true });
@@ -182,13 +185,29 @@ function createMcpServer() {
   return server;
 }
 
+const MAX_BODY_SIZE = 1024 * 1024; // 1MB max request size
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let totalSize = 0;
+    req.on("data", (chunk) => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_BODY_SIZE) reject(new Error("Request body too large"));
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
 async function main() {
   await init();
-  const server = createMcpServer();
   const useStdio = process.argv.includes("--stdio");
 
   if (useStdio) {
     log("Starting Memory MCP server in STDIO mode");
+    const server = createMcpServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
   } else {
@@ -199,18 +218,29 @@ async function main() {
         return;
       }
       if (req.url === "/mcp" || req.url === "/") {
+        // Validate Accept header to ensure client can handle JSON-RPC and event streams
+        const acceptHeader = req.headers['accept'];
+        if (!acceptHeader || !acceptHeader.includes('application/json') || !acceptHeader.includes('text/event-stream')) {
+          console.warn('Missing or invalid Accept header', { accept: acceptHeader });
+          if (!res.headersSent) {
+            res.writeHead(406, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Not Acceptable: client must accept application/json and text/event-stream" }));
+          }
+          return;
+        }
+        // Close existing transport if any before creating new one
+        if (currentTransport) {
+          currentTransport.close();
+          currentTransport = null;
+        }
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         res.on("close", () => transport.close());
         try {
-          const body = await new Promise((resolve, reject) => {
-            let data = "";
-            req.on("data", (chunk) => { data += chunk; });
-            req.on("end", () => resolve(data));
-            req.on("error", (err) => reject(err));
-          });
-          const parsedBody = body ? JSON.parse(body) : undefined;
-          await server.connect(transport);
-          await transport.handleRequest(req, res, parsedBody);
+          const serverInstance = createMcpServer();
+          await serverInstance.connect(transport);
+          const buf = await readBody(req);
+          const body = JSON.parse(buf.toString());
+          await transport.handleRequest(req, res, body);
         } catch (err) {
           console.error("[memory] MCP error:", err);
           if (!res.headersSent) {
