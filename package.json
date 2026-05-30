@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "MCP Hub — Multi-server MCP orchestration",
   "private": true,
+  "type": "module",
   "workspaces": [
     "servers/*"
   ],

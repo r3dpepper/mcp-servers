@@ -5,6 +5,7 @@
   "scripts": {
     "build": "echo \"No build needed for JavaScript source\"",
     "start": "node src/index.js",
+    "dev": "node src/index.js",
     "stop": "pkill -f 'memory' || true"
   },
   "dependencies": {
