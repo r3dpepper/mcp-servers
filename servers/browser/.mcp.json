@@ -1,0 +1,19 @@
+{
+  "name": "browser",
+  "version": "1.0.0",
+  "description": "MCP server for browser automation tools",
+  "commands": [
+    {
+      "command": "npm",
+      "args": ["run", "dev"]
+    }
+  ],
+  "env": {
+    "PORT": "3003",
+    "NODE_ENV": "development",
+    "LOG_LEVEL": "info",
+    "BROWSER_PORT": "3003",
+    "TRANSPORT": "http"
+  },
+  "stdio": false
+}

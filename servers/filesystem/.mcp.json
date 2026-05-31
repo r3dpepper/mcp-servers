@@ -1,0 +1,19 @@
+{
+  "name": "filesystem",
+  "version": "1.0.0",
+  "description": "MCP server exposing filesystem interactions as a tool",
+  "commands": [
+    {
+      "command": "npm",
+      "args": ["run", "dev"]
+    }
+  ],
+  "env": {
+    "PORT": "3004",
+    "NODE_ENV": "development",
+    "LOG_LEVEL": "info",
+    "FILESYSTEM_PORT": "3004",
+    "TRANSPORT": "http"
+  },
+  "stdio": false
+}

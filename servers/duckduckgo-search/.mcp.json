@@ -1,0 +1,21 @@
+{
+  "name": "duckduckgo-search",
+  "version": "1.0.0",
+  "description": "MCP server exposing DuckDuckGo Search as a tool",
+  "commands": [
+    {
+      "command": "npm",
+      "args": ["run", "dev"]
+    }
+  ],
+  "env": {
+    "PORT": "3002",
+    "NODE_ENV": "development",
+    "LOG_LEVEL": "info",
+    "DUCKDUCKGO_SEARCH_PORT": "3002",
+    "DUCKDUCKGO_SEARCH_MAX_RESULTS": "10",
+    "DUCKDUCKGO_TIMEOUT_MS": "10000",
+    "TRANSPORT": "http"
+  },
+  "stdio": false
+}
