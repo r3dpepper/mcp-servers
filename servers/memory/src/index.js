@@ -1,28 +1,25 @@
-// @ts-check
 /**
  * Memory MCP Server - Persistent knowledge graph
  */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createServer } from "http";
-import { z } from "zod";
-import { readFile, writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { randomUUID } from "crypto";
+const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
+const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
+const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
+const { createServer } = require("http");
+const { z } = require("zod");
+const { readFile, writeFile, mkdir } = require("fs/promises");
+const { join } = require("path");
+const { randomUUID } = require("crypto");
 
 const PORT = process.env.MEMORY_PORT || 3006;
 const DB_PATH = process.env.MEMORY_DB_PATH || join(process.env.HOME || "/", ".mcp-servers", "memory.db");
 const NAMESPACE = process.env.MEMORY_NAMESPACE || "default";
 
-// In-memory store with persistence
 const store = {
   entities: {},
   relations: {},
 };
 
-// Track current transport to prevent multiple connections
 let currentTransport = null;
 
 async function init() {
@@ -32,7 +29,6 @@ async function init() {
     Object.assign(store.entities, data.entities || {});
     Object.assign(store.relations, data.relations || {});
   } catch {
-    // Start fresh
     await mkdir(join(DB_PATH, ".."), { recursive: true });
     await save();
   }
@@ -55,10 +51,24 @@ function createMcpServer() {
       description: "Create or update entities and relations in the knowledge graph",
       inputSchema: z.object({
         action: z.enum(["add_entities", "add_relations", "add_observations"]),
-        entities: z.array(z.object({ id: z.string().optional(), namespace: z.string().optional(), type: z.string(), value: z.string() })).optional(),
-        relations: z.array(z.object({ id: z.string().optional(), source: z.string(), type: z.string(), target: z.string(), metadata: z.record(z.any()).optional() })).optional(),
-        observations: z.array(z.object({ entityId: z.string(), contents: z.array(z.string()) })).optional(),
-      }),
+        entities: z.array(z.object({
+          id: z.string().optional(),
+          namespace: z.string().optional(),
+          type: z.string(),
+          value: z.string()
+        })).optional(),
+        relations: z.array(z.object({
+          id: z.string().optional(),
+          source: z.string(),
+          type: z.string(),
+          target: z.string(),
+          metadata: z.record(z.any()).optional()
+        })).optional(),
+        observations: z.array(z.object({
+          entityId: z.string(),
+          contents: z.array(z.string())
+        })).optional()
+      })
     },
     async (args) => {
       const { action, entities, relations, observations } = args;
@@ -106,8 +116,8 @@ function createMcpServer() {
         action: z.enum(["get_entity", "search", "get_graph"]),
         id: z.string().optional(),
         query: z.string().optional(),
-        depth: z.number().int().positive().optional().default(2),
-      }),
+        depth: z.number().int().positive().optional().default(2)
+      })
     },
     async (args) => {
       const { action, id, query, depth } = args;
@@ -153,8 +163,8 @@ function createMcpServer() {
       inputSchema: z.object({
         action: z.enum(["delete_entity", "delete_relation", "list_entities", "stats"]),
         id: z.string().optional(),
-        limit: z.number().int().positive().optional().default(100),
-      }),
+        limit: z.number().int().positive().optional().default(100)
+      })
     },
     async (args) => {
       const { action, id, limit } = args;
@@ -185,7 +195,7 @@ function createMcpServer() {
   return server;
 }
 
-const MAX_BODY_SIZE = 1024 * 1024; // 1MB max request size
+const MAX_BODY_SIZE = 1024 * 1024;
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -218,7 +228,6 @@ async function main() {
         return;
       }
       if (req.url === "/mcp" || req.url === "/") {
-        // Validate Accept header to ensure client can handle JSON-RPC and event streams
         const acceptHeader = req.headers['accept'];
         if (!acceptHeader || !acceptHeader.includes('application/json') || !acceptHeader.includes('text/event-stream')) {
           console.warn('Missing or invalid Accept header', { accept: acceptHeader });
@@ -228,16 +237,18 @@ async function main() {
           }
           return;
         }
-        // Close existing transport if any before creating new one
+
         if (currentTransport) {
           currentTransport.close();
           currentTransport = null;
         }
+
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         res.on("close", () => transport.close());
         try {
           const serverInstance = createMcpServer();
           await serverInstance.connect(transport);
+          currentTransport = transport;
           const buf = await readBody(req);
           const body = JSON.parse(buf.toString());
           await transport.handleRequest(req, res, body);
@@ -259,4 +270,4 @@ async function main() {
 
 main().catch(log);
 
-export { init, store };
+module.exports = { init, store };

@@ -1,19 +1,20 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "strict": false,
-    "skipLibCheck": true,
-    "sourceMap": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "ts-node": {
-    "esm": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
-}
+    "compilerOptions": {
+      "target": "ES2022",
+      "module": "ESNext",
+      "moduleResolution": "bundler",
+      "rootDir": "src",
+      "outDir": "dist",
+      "strict": false,
+      "skipLibCheck": true,
+      "sourceMap": true,
+      "esModuleInterop": true,
+      "forceConsistentCasingInFileNames": true,
+      "resolveJsonModule": true
+    },
+    "ts-node": {
+      "esm": true
+    },
+    "include": ["./src/**/*.ts", "./src/**/*.js"],
+    "exclude": ["node_modules", "dist"]
+  }
