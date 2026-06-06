@@ -4,13 +4,13 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 
 ## Available Servers
 
-| Server | Port | Tools | API Key Required |
-|--------|------|-------|------------------|
-| `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No |
-| `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No |
-| `filesystem` | 3004 | `read_text_file`, `read_media_file`, `read_multiple_files`, `write_file`, `edit_file`, `create_directory`, `list_directory`, `directory_tree`, `move_file`, `search_files`, `get_file_info`, `list_allowed_directories` | No |
-| `fetch` | 3005 | `fetch_url` | No |
-| `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No |
+| Server | Port | Tools | API Key Required | Features |
+|--------|------|-------|------------------|----------|
+| `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No | Rate limiting, caching, retry logic |
+| `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No | - |
+| `filesystem` | 3004 | `read_text_file`, `read_media_file`, `read_multiple_files`, `write_file`, `edit_file`, `create_directory`, `list_directory`, `directory_tree`, `move_file`, `search_files`, `get_file_info`, `list_allowed_directories` | No | CORS support |
+| `fetch` | 3005 | `fetch_url` | No | Security hardening, timeout protection, retry logic |
+| `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No | - |
 
 ## Quick Start
 

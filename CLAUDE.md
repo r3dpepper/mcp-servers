@@ -40,8 +40,11 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 │       ├── src/
 │       │   ├── index.ts              ← Server entry
 │       │   ├── config.ts             ← Environment config
-│       │   ├── duckduckgo-client.ts  ← API client
+│       │   ├── duckduckgo-client.ts  ← API client + HTML parsing
 │       │   ├── logger.ts             ← Logging
+│       │   ├── rate-limiter.ts       ← Request rate limiting
+│       │   ├── cache.ts              ← TTL-based result caching
+│       │   ├── retry.ts              ← Exponential backoff
 │       │   └── tools/                ← Tool definitions
 │       ├── package.json
 │       └── tsconfig.json
@@ -89,9 +92,16 @@ cd servers/duckduckgo-search && npm run dev
 | `DUCKDUCKGO_SEARCH_PORT` | 3002 | DuckDuckGo server port |
 | `DUCKDUCKGO_SEARCH_MAX_RESULTS` | 10 | Max results per search (max: 50) |
 | `DUCKDUCKGO_TIMEOUT_MS` | 10000 | Request timeout in milliseconds |
+| `DUCKDUCKGO_RATE_LIMIT_PER_MINUTE` | 10 | Rate limit for search requests |
+| `DUCKDUCKGO_CACHE_TTL_SECONDS` | 300 | Search result cache TTL (5 minutes) |
 | `TRANSPORT` | http | `http` or `stdio` |
 | `NODE_ENV` | development | Environment |
 | `LOG_LEVEL` | info | Logging level |
+| `FETCH_PORT` | 3005 | Fetch server port |
+| `FETCH_TIMEOUT_MS` | 30000 | Fetch request timeout |
+| `FETCH_MAX_URL_LENGTH` | 2048 | Maximum URL length allowed |
+| `FETCH_MAX_CONTENT_LENGTH` | 1048576 | Maximum response size (1MB) |
+| `FETCH_USER_AGENT` | MCP-Fetch-Server/1.0 | User agent header |
 
 ---
 
@@ -105,6 +115,26 @@ cd servers/duckduckgo-search && npm run dev
 - Use `zod` for all input validation
 
 ---
+
+## Server features
+
+### DuckDuckGo Search
+- **Rate limiting**: Prevents abuse (configurable per client)
+- **Caching**: TTL-based query result caching (default 5 minutes)
+- **Retry logic**: Exponential backoff for transient failures
+- **HTML parsing**: Uses linkedom for reliable search result extraction
+- **CORS support**: Cross-origin requests enabled for HTTP transport
+
+### Fetch
+- **Security hardening**: URL scheme validation (http/https only), content type checks
+- **Timeout protection**: Configurable request timeouts
+- **Size limits**: Response size and URL length limits enforced
+- **Retry logic**: Automatic retry with exponential backoff
+- **CORS support**: Cross-origin requests enabled
+
+### Filesystem
+- **CORS support**: Cross-origin requests enabled
+- **Accept header validation**: Ensures proper MCP protocol compliance
 
 ## Testing a tool manually
 
