@@ -11,6 +11,7 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { duckDuckGoSearch, fetchInstantAnswer } from "./duckduckgo-client.js";
+import { checkRateLimit, getRateLimitStatus } from "./rate-limiter.js";
 
 function createMcpServer() {
   const server = new McpServer({
@@ -160,6 +161,17 @@ if (useStdio) {
 
   const httpServer = createHttpServer(
     async (req, res) => {
+      // CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "content-type,accept");
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
       if (req.method === "GET" && req.url === "/health") {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
@@ -168,9 +180,27 @@ if (useStdio) {
             server: "duckduckgo-search",
             version: "1.0.0",
             requiresApiKey: false,
+            rateLimit: {
+              perMinute: config.rateLimitPerMinute,
+            },
             timestamp: new Date().toISOString(),
           })
         );
+        return;
+      }
+
+      // Rate limiting for MCP endpoints
+      const clientId = req.headers["x-forwarded-for"]?.toString() || "default";
+      if (!checkRateLimit(clientId)) {
+        res.writeHead(429, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          jsonrpc: "2.0",
+          error: {
+            code: -32604,
+            message: "Rate limit exceeded. Please retry later."
+          },
+          id: null
+        }));
         return;
       }
 

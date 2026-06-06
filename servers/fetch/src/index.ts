@@ -5,6 +5,53 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 
+/**
+ * Validate URL scheme to prevent accessing dangerous protocols.
+ */
+function isValidUrlScheme(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sleep helper for retry backoff.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry with exponential backoff.
+ */
+async function withRetry<T>(fn: () => Promise<T>, retries: number = 3, baseDelayMs: number = 1000): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      if (attempt < retries - 1) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        logger.warn("Fetch request failed, retrying", {
+          attempt: attempt + 1,
+          maxRetries: retries,
+          delay,
+          error: lastError.message,
+        });
+        await sleep(delay);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 const server = new McpServer({
   name: "fetch",
   version: "1.0.0",
@@ -21,24 +68,78 @@ server.registerTool(
   },
   async (args: { url: string }) => {
     const { url } = args;
+
+    // Security: Validate URL scheme
+    if (!isValidUrlScheme(url)) {
+      return {
+        content: [{ type: "text", text: "Error: Only http and https URLs are allowed" }],
+        isError: true,
+      };
+    }
+
+    // Security: Check URL length
+    if (url.length > config.maxUrlLength) {
+      return {
+        content: [{ type: "text", text: `Error: URL exceeds maximum length of ${config.maxUrlLength} characters` }],
+        isError: true,
+      };
+    }
+
     try {
       logger.debug(`Fetching ${url}`);
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { "User-Agent": config.userAgent },
-      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ${response.statusText}`);
-      }
+      const fetchFn = async () => {
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs);
 
-      const text = await response.text();
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            headers: { "User-Agent": config.userAgent },
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          // Check content length
+          const contentLength = response.headers.get("content-length");
+          if (contentLength) {
+            const length = parseInt(contentLength, 10);
+            if (length > config.maxContentLength) {
+              throw new Error(`Response too large (${length} bytes)`);
+            }
+          }
+
+          // Validate content type
+          const contentType = response.headers.get("content-type");
+          const allowedTypes = ["text/", "application/json", "application/xml", "application/javascript"];
+          if (contentType && !allowedTypes.some(t => contentType.includes(t))) {
+            throw new Error(`Unsupported content type: ${contentType}`);
+          }
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          }
+
+          return response.text();
+        } catch (err) {
+          clearTimeout(timeoutId);
+          throw err;
+        }
+      };
+
+      const text = await withRetry(fetchFn);
       return {
         content: [{ type: "text", text }],
       };
     } catch (error) {
       logger.error("Fetch failed", { error, url });
-      throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Fetch failed: ${message}` }],
+        isError: true,
+      };
     }
   }
 );
@@ -67,6 +168,17 @@ if (useStdio) {
   // In stdio mode we just let the parent process handle the server
 } else {
   const httpServer = createHttpServer(async (req, res) => {
+    // CORS headers
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "content-type,accept");
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     if (req.method === "GET" && req.url === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
@@ -75,6 +187,11 @@ if (useStdio) {
           server: "fetch",
           version: "1.0.0",
           requiresApiKey: false,
+          config: {
+            timeoutMs: config.timeoutMs,
+            maxContentLength: config.maxContentLength,
+            maxUrlLength: config.maxUrlLength,
+          },
           timestamp: new Date().toISOString(),
         })
       );
@@ -91,7 +208,7 @@ if (useStdio) {
           method: req.method
         });
         if (!res.headersSent) {
-          res.writeHead(406, { "Content-Type": "application/json" }); // 406 Not Acceptable
+          res.writeHead(406, { "Content-Type": "application/json" });
           res.end(JSON.stringify({
             jsonrpc: "2.0",
             error: {

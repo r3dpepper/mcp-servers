@@ -181,6 +181,17 @@ if (useStdio) {
 
   const httpServer = createHttpServer(
     async (req, res) => {
+      // CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "content-type,accept");
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
       if (req.method === "GET" && req.url === "/health") {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(
@@ -197,6 +208,28 @@ if (useStdio) {
       }
 
       if (req.url === "/mcp" || req.url === "/") {
+        // Check for required Accept header
+        const acceptHeader = req.headers['accept'];
+        if (!acceptHeader || !acceptHeader.includes('application/json') || !acceptHeader.includes('text/event-stream')) {
+          logger.warn('Missing or invalid Accept header', {
+            url: req.url,
+            accept: acceptHeader,
+            method: req.method
+          });
+          if (!res.headersSent) {
+            res.writeHead(406, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({
+              jsonrpc: "2.0",
+              error: {
+                code: -32603,
+                message: "Not Acceptable: Client must accept both application/json and text/event-stream"
+              },
+              id: null
+            }));
+          }
+          return;
+        }
+
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: undefined,
         });

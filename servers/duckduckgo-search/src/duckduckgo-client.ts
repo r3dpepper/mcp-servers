@@ -19,6 +19,9 @@
 
 import { config } from "./config.js";
 import { logger } from "./logger.js";
+import { parseHTML } from "linkedom";
+import { getCached, setCached, createCacheKey } from "./cache.js";
+import { withRetry } from "./retry.js";
 
 // ── Shared types ─────────────────────────────────────────────────────────────
 
@@ -75,75 +78,74 @@ export async function fetchInstantAnswer(
 
   logger.debug("DDG Instant Answer API request", { query });
 
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    config.requestTimeoutMs
-  );
+  return withRetry(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      config.requestTimeoutMs
+    );
 
-  try {
-    const res = await fetch(url.toString(), {
-      headers: { ...HEADERS, Accept: "application/json" },
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      logger.warn("DDG Instant Answer API non-OK response", {
-        status: res.status,
+    try {
+      const res = await fetch(url.toString(), {
+        headers: { ...HEADERS, Accept: "application/json" },
+        signal: controller.signal,
       });
-      return null;
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = (await res.json()) as any;
+
+      // No meaningful content
+      if (
+        !data.Abstract &&
+        !data.Answer &&
+        !data.Definition &&
+        (!data.RelatedTopics || data.RelatedTopics.length === 0)
+      ) {
+        return null;
+      }
+
+      const relatedTopics: InstantAnswer["relatedTopics"] = (
+        data.RelatedTopics ?? []
+      )
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((t: any) => t.FirstURL && t.Text)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .slice(0, 5)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((t: any) => ({ text: t.Text, url: t.FirstURL }));
+
+      const infobox: InstantAnswer["infobox"] = (
+        data.Infobox?.content ?? []
+      )
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((item: any) => item.label && item.value)
+        .slice(0, 8)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((item: any) => ({
+          label: String(item.label),
+          value: String(item.value),
+        }));
+
+      return {
+        heading: data.Heading ?? "",
+        abstract: data.Abstract ?? "",
+        abstractSource: data.AbstractSource ?? "",
+        abstractURL: data.AbstractURL ?? "",
+        answer: data.Answer ?? "",
+        answerType: data.AnswerType ?? "",
+        definition: data.Definition ?? "",
+        definitionSource: data.DefinitionSource ?? "",
+        relatedTopics,
+        infobox,
+      };
+    } finally {
+      clearTimeout(timeout);
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await res.json()) as any;
-
-    // No meaningful content
-    if (
-      !data.Abstract &&
-      !data.Answer &&
-      !data.Definition &&
-      (!data.RelatedTopics || data.RelatedTopics.length === 0)
-    ) {
-      return null;
-    }
-
-    const relatedTopics: InstantAnswer["relatedTopics"] = (
-      data.RelatedTopics ?? []
-    )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((t: any) => t.FirstURL && t.Text)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .slice(0, 5)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((t: any) => ({ text: t.Text, url: t.FirstURL }));
-
-    const infobox: InstantAnswer["infobox"] = (
-      data.Infobox?.content ?? []
-    )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((item: any) => item.label && item.value)
-      .slice(0, 8)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((item: any) => ({
-        label: String(item.label),
-        value: String(item.value),
-      }));
-
-    return {
-      heading: data.Heading ?? "",
-      abstract: data.Abstract ?? "",
-      abstractSource: data.AbstractSource ?? "",
-      abstractURL: data.AbstractURL ?? "",
-      answer: data.Answer ?? "",
-      answerType: data.AnswerType ?? "",
-      definition: data.Definition ?? "",
-      definitionSource: data.DefinitionSource ?? "",
-      relatedTopics,
-      infobox,
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
+  });
 }
 
 // ── HTML Scraper ──────────────────────────────────────────────────────────────
@@ -154,97 +156,103 @@ export async function scrapeWebResults(
 ): Promise<WebResult[]> {
   logger.debug("DDG HTML scrape request", { query, maxResults });
 
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    config.requestTimeoutMs
-  );
+  return withRetry(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      config.requestTimeoutMs
+    );
 
-  try {
-    const res = await fetch(HTML_SEARCH_URL, {
-      method: "POST",
-      headers: {
-        ...HEADERS,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ q: query, b: "", kl: "us-en" }).toString(),
-      signal: controller.signal,
-    });
+    try {
+      const res = await fetch(HTML_SEARCH_URL, {
+        method: "POST",
+        headers: {
+          ...HEADERS,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ q: query, b: "", kl: "us-en" }).toString(),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      throw new Error(`DDG HTML search returned ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`DDG HTML search returned ${res.status}`);
+      }
+
+      const html = await res.text();
+      return parseSearchResults(html, maxResults);
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const html = await res.text();
-    return parseSearchResults(html, maxResults);
-  } finally {
-    clearTimeout(timeout);
-  }
+  });
 }
 
 /**
  * Parse classic web results out of DuckDuckGo's lite HTML page.
- *
- * DDG's HTML page structure (the lite version) is stable and minimal:
- *   <div class="result">
- *     <h2 class="result__title"><a href="...">Title</a></h2>
- *     <a class="result__snippet">Snippet text</a>
- *   </div>
+ * Uses linkedom for reliable HTML parsing instead of regex.
  */
 function parseSearchResults(html: string, maxResults: number): WebResult[] {
   const results: WebResult[] = [];
 
-  // Extract result blocks
-  const resultBlockRe =
-    /<div[^>]+class="[^"]*result[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?=<div[^>]+class="[^"]*result|<\/div>|$)/gi;
+  try {
+    const doc = parseHTML(html);
+    const resultElements = doc.window.document.querySelectorAll(".result");
 
-  // Extract title + URL
-  const titleRe =
-    /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i;
+    for (const element of resultElements) {
+      if (results.length >= maxResults) break;
 
-  // Extract snippet
-  const snippetRe =
-    /<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/i;
+      const link = element.querySelector("a.result__a");
+      if (!link) continue;
 
-  let match: RegExpExecArray | null;
+      const rawUrl = link.getAttribute("href");
+      const title = link.textContent?.trim() ?? "";
 
-  while (
-    (match = resultBlockRe.exec(html)) !== null &&
-    results.length < maxResults
-  ) {
-    const block = match[1];
-    const titleMatch = titleRe.exec(block);
-    const snippetMatch = snippetRe.exec(block);
+      if (!rawUrl || !title) continue;
 
-    if (!titleMatch) continue;
+      const url = extractRealUrl(rawUrl);
+      if (!url) continue;
 
-    const rawUrl = titleMatch[1];
-    const title = stripTags(titleMatch[2]).trim();
-    const snippet = snippetMatch ? stripTags(snippetMatch[1]).trim() : "";
+      // Extract snippet from result__snippet or similar
+      const snippetEl = element.querySelector("a.result__snippet");
+      const snippet = snippetEl?.textContent?.trim() ?? "";
 
-    // DDG wraps URLs in a redirect — extract the real URL
-    const url = extractRealUrl(rawUrl);
-
-    if (!url || !title) continue;
-
-    results.push({ title, url, snippet });
-  }
-
-  // Fallback: simpler regex if the block approach found nothing
-  if (results.length === 0) {
-    const linkRe =
-      /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    while (
-      (match = linkRe.exec(html)) !== null &&
-      results.length < maxResults
-    ) {
-      const url = extractRealUrl(match[1]);
-      const title = stripTags(match[2]).trim();
-      if (url && title) results.push({ title, url, snippet: "" });
+      results.push({ title, url, snippet });
     }
+  } catch (err) {
+    logger.warn("HTML parsing failed, falling back to regex", { err });
+    // Fallback to regex if linkedom parsing fails
+    return parseSearchResultsRegex(html, maxResults);
   }
 
   logger.debug("DDG HTML scrape parsed", { found: results.length });
+  return results;
+}
+
+/**
+ * Fallback regex-based parsing for when linkedom fails.
+ */
+function parseSearchResultsRegex(html: string, maxResults: number): WebResult[] {
+  const results: WebResult[] = [];
+
+  const titleRe =
+    /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  const snippetRe =
+    /<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+
+  let match: RegExpExecArray | null;
+
+  while ((match = titleRe.exec(html)) !== null && results.length < maxResults) {
+    const rawUrl = match[1];
+    const title = stripTags(match[2]).trim();
+
+    // Try to find snippet near this match
+    const remainingHtml = html.slice(match.index);
+    const snippetMatch = snippetRe.exec(remainingHtml);
+    const snippet = snippetMatch ? stripTags(snippetMatch[1]).trim() : "";
+
+    const url = extractRealUrl(rawUrl);
+    if (url && title) results.push({ title, url, snippet });
+  }
+
   return results;
 }
 
@@ -295,6 +303,15 @@ export async function duckDuckGoSearch(
   query: string,
   maxResults: number = config.maxResults
 ): Promise<DuckDuckGoSearchResponse> {
+  const cacheKey = createCacheKey(query, maxResults);
+
+  // Check cache first
+  const cached = getCached(cacheKey);
+  if (cached) {
+    logger.debug("Cache hit for search query", { query });
+    return cached;
+  }
+
   // Run both in parallel for speed
   const [instantAnswer, webResults] = await Promise.allSettled([
     fetchInstantAnswer(query),
@@ -312,8 +329,14 @@ export async function duckDuckGoSearch(
     });
   }
 
-  const source =
-    ia && wr.length > 0 ? "combined" : ia ? "instant_answer" : "html_scrape";
+  let source: "instant_answer" | "html_scrape" | "combined" = "html_scrape";
+  if (ia && wr.length > 0) source = "combined";
+  else if (ia) source = "instant_answer";
 
-  return { instantAnswer: ia, webResults: wr, query, source };
+  const response: DuckDuckGoSearchResponse = { instantAnswer: ia, webResults: wr, query, source };
+
+  // Cache the response
+  setCached(cacheKey, response, config.cacheTtlSeconds * 1000);
+
+  return response;
 }

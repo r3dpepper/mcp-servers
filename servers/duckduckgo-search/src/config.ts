@@ -27,4 +27,8 @@ export const config = {
   transport: optionalEnv("TRANSPORT", "http") as "stdio" | "http",
   nodeEnv: optionalEnv("NODE_ENV", "development"),
   logLevel: optionalEnv("LOG_LEVEL", "info"),
+  // Rate limiting
+  rateLimitPerMinute: optionalEnvInt("DUCKDUCKGO_RATE_LIMIT_PER_MINUTE", 10),
+  // Caching
+  cacheTtlSeconds: optionalEnvInt("DUCKDUCKGO_CACHE_TTL_SECONDS", 300),
 };
