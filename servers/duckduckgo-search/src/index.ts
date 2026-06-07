@@ -30,6 +30,14 @@ function createMcpServer() {
       }),
     },
     async ({ query, num_results }) => {
+      // Check rate limit before executing search
+      if (!checkRateLimit()) {
+        return {
+          content: [{ type: "text", text: "Rate limit exceeded. Please retry later." }],
+          isError: true,
+        };
+      }
+
       try {
         const response = await duckDuckGoSearch(query, num_results);
         const parts = [];
@@ -98,6 +106,14 @@ function createMcpServer() {
       }),
     },
     async ({ query }) => {
+      // Check rate limit before executing search
+      if (!checkRateLimit()) {
+        return {
+          content: [{ type: "text", text: "Rate limit exceeded. Please retry later." }],
+          isError: true,
+        };
+      }
+
       try {
         const ia = await fetchInstantAnswer(query);
 
@@ -186,21 +202,6 @@ if (useStdio) {
             timestamp: new Date().toISOString(),
           })
         );
-        return;
-      }
-
-      // Rate limiting for MCP endpoints
-      const clientId = req.headers["x-forwarded-for"]?.toString() || "default";
-      if (!checkRateLimit(clientId)) {
-        res.writeHead(429, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({
-          jsonrpc: "2.0",
-          error: {
-            code: -32604,
-            message: "Rate limit exceeded. Please retry later."
-          },
-          id: null
-        }));
         return;
       }
 
