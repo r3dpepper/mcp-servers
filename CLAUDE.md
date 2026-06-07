@@ -174,6 +174,11 @@ claude mcp add memory --transport http --scope user http://localhost:3006/mcp
 
 ---
 
+## Commit conventions
+
+- Do not add `Co-Authored-By` trailer to commit messages
+- Write clear, descriptive commit messages in present tense
+
 ## When updating docs
 
 - Keep this `CLAUDE.md` in sync after every structural change
