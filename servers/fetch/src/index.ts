@@ -199,9 +199,9 @@ if (useStdio) {
     }
 
     if (req.url === "/mcp" || req.url === "/") {
-      // Check for required Accept header
+      // Check for required Accept header (MCP spec: accept either application/json or text/event-stream)
       const acceptHeader = req.headers['accept'];
-      if (!acceptHeader || !acceptHeader.includes('application/json') || !acceptHeader.includes('text/event-stream')) {
+      if (!acceptHeader || (!acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream'))) {
         logger.warn('Missing or invalid Accept header', {
           url: req.url,
           accept: acceptHeader,
@@ -213,7 +213,7 @@ if (useStdio) {
             jsonrpc: "2.0",
             error: {
               code: -32603,
-              message: "Not Acceptable: Client must accept both application/json and text/event-stream"
+              message: "Not Acceptable: Client must accept application/json or text/event-stream"
             },
             id: null
           }));
