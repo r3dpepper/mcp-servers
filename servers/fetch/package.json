@@ -1,5 +1,5 @@
 {
-  "name": "fetch",
+  "name": "@mcp-hub/fetch",
   "version": "1.0.0",
   "description": "Fetches URLs and returns content - MCP server for web fetching",
   "keywords": [

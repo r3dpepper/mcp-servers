@@ -10,7 +10,8 @@ const SERVERS = ["fetch", "filesystem", "browser", "duckduckgo-search", "memory"
 
 function stopServer(name) {
   console.log(`Stopping ${name}...`);
-  exec(`pkill -f "node.*${name}/dist/index.js|node.*${name}/src/index.js"`, (err) => {
+  // Kill both tsx watch (dev mode) and dist/index.js (built) processes
+  exec(`pkill -f "${name}/dist/index.js|tsx.*${name}|node.*${name}.*stdio"`, (err) => {
     if (err && err.code !== 1) {
       console.error(`Failed to stop ${name}: ${err.message}`);
     } else {

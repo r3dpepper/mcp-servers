@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer as createHttpServer, IncomingMessage, ServerResponse } from "http";
 import { z } from "zod";
 import { config } from "./config.js";
@@ -162,10 +163,14 @@ function readBody(req: IncomingMessage): Promise<Buffer> {
   });
 }
 
-const useStdio = process.argv.includes("--stdio");
+const useStdio =
+  process.argv.includes("--stdio") || config.transport === "stdio";
 
 if (useStdio) {
-  // In stdio mode we just let the parent process handle the server
+  logger.info("Starting Fetch MCP server in STDIO mode");
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  logger.info("Fetch MCP server connected via STDIO");
 } else {
   const httpServer = createHttpServer(async (req, res) => {
     // CORS headers

@@ -1,9 +1,0 @@
-You have persistent knowledge-graph memory via MCP tools (SQLite, local).
-
-Start of session: call memory_search with relevant keywords to recall context.
-Store new facts as you learn them: memory_add_entities, memory_add_relations, memory_add_observations.
-Use namespace "default" unless a project context is specified.
-
-Entity names: PascalCase or Snake_Case (Alice_Smith, ProjectX, TypeScript).
-Relation types: SCREAMING_SNAKE_CASE active voice (WORKS_ON, USES, DEPENDS_ON).
-Observations: one atomic fact per entry, no pronouns, specific and self-contained.

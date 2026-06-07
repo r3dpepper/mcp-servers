@@ -65,8 +65,14 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 # Install dependencies (all workspaces)
 npm install
 
-# Start all enabled servers
+# Build all servers (required before stdio mode)
+npm run build
+
+# Start all servers (HTTP mode)
 npm run dev
+
+# Start all servers (Stdio mode - recommended for Claude Code CLI)
+npm run dev:stdio
 
 # Stop all running servers
 npm run stop
@@ -75,9 +81,7 @@ npm run stop
 npm run stop-browser      # Stop only the browser server
 npm run stop-filesystem   # Stop only the filesystem server
 npm run stop-fetch        # Stop only the fetch server
-
-# Build all servers
-npm run build
+npm run stop-memory       # Stop only the memory server
 
 # Start a single server (for testing)
 cd servers/duckduckgo-search && npm run dev
@@ -94,7 +98,10 @@ cd servers/duckduckgo-search && npm run dev
 | `DUCKDUCKGO_TIMEOUT_MS` | 10000 | Request timeout in milliseconds |
 | `DUCKDUCKGO_RATE_LIMIT_PER_MINUTE` | 10 | Rate limit for search requests |
 | `DUCKDUCKGO_CACHE_TTL_SECONDS` | 300 | Search result cache TTL (5 minutes) |
-| `TRANSPORT` | http | `http` or `stdio` |
+| `MEMORY_PORT` | 3006 | Memory server port |
+| `MEMORY_DB_PATH` | `~/.mcp-servers/memory.db` | Path to memory database file |
+| `MEMORY_NAMESPACE` | `default` | Namespace for memory entities |
+| `TRANSPORT` | `http` | `http` or `stdio` - controls transport mode for all servers |
 | `NODE_ENV` | development | Environment |
 | `LOG_LEVEL` | info | Logging level |
 | `FETCH_PORT` | 3005 | Fetch server port |
@@ -153,6 +160,76 @@ curl -s -X POST http://localhost:3002/mcp \
 
 ## Connecting to Claude Code
 
+**Important:** The Claude Code CLI has known issues with HTTP/SSE transport where headers (including Accept headers) are stripped by the Bun runtime. For reliable connections, use **Stdio transport** instead.
+
+### Stdio Transport (Recommended)
+
+Run servers locally using Stdio transport, which bypasses HTTP header issues:
+
+```bash
+# Using environment variables for stdio mode
+TRANSPORT=stdio npm run dev --workspace=@mcp-hub/memory
+```
+
+Or register via Claude CLI with `claude mcp add`:
+
+```bash
+# Build first (required for stdio)
+npm run build
+
+# Add servers via CLI (stdio transport)
+claude mcp add duckduckgo-search --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/duckduckgo-search/dist/index.js
+
+claude mcp add browser --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/browser/dist/index.js
+
+claude mcp add filesystem --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/filesystem/dist/index.js
+
+claude mcp add fetch --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/fetch/dist/index.js
+
+claude mcp add memory --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/memory/dist/index.js
+```
+
+Or configure in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "duckduckgo-search": {
+      "command": "node",
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/duckduckgo-search/dist/index.js"],
+      "env": { "TRANSPORT": "stdio" }
+    },
+    "browser": {
+      "command": "node",
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/browser/dist/index.js"],
+      "env": { "TRANSPORT": "stdio" }
+    },
+    "filesystem": {
+      "command": "node",
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/filesystem/dist/index.js"],
+      "env": { "TRANSPORT": "stdio" }
+    },
+    "fetch": {
+      "command": "node",
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/fetch/dist/index.js"],
+      "env": { "TRANSPORT": "stdio" }
+    },
+    "memory": {
+      "command": "node",
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/memory/dist/index.js"],
+      "env": { "TRANSPORT": "stdio" }
+    }
+  }
+}
+```
+
+### HTTP Transport
+
 Register the MCP servers with Claude Code using the `claude mcp add` command:
 
 ```bash
@@ -171,6 +248,8 @@ claude mcp add fetch --transport http --scope user http://localhost:3005/mcp
 # Memory
 claude mcp add memory --transport http --scope user http://localhost:3006/mcp
 ```
+
+**Note:** HTTP transport requires proper Accept headers (`application/json` or `text/event-stream`). If you encounter connection issues, switch to Stdio transport.
 
 ---
 

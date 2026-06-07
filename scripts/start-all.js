@@ -2,16 +2,19 @@
 /**
  * Start all enabled MCP servers locally.
  *
- * Usage: node scripts/start-all.js
+ * Usage: node scripts/start-all.js [--stdio]
  *
- * Servers are started with `npm run dev` in their respective directories.
+ * Servers are started with `npm run start` (stdio) or `npm run dev` (HTTP) in their respective directories.
  * Each server runs in its own subprocess with colored output.
+ *
+ * --stdio: Start servers in stdio mode (recommended for Claude Code CLI)
  */
 
 import { spawn } from "child_process";
 import { resolve } from "path";
 
 const ROOT = resolve(import.meta.dirname, "..");
+const useStdio = process.argv.includes("--stdio");
 
 const SERVERS = [
   {
@@ -60,19 +63,31 @@ function startServer(server) {
 
   console.log(`${server.color}▶ ${server.name}\x1b[0m starting...`);
 
-  const proc = spawn("npm run dev", {
+  const env = useStdio
+    ? { ...process.env, TRANSPORT: "stdio" }
+    : process.env;
+
+  // Use 'npm run start' for stdio (uses built dist/index.js)
+  // Use 'npm run dev' for HTTP (uses tsx watch for hot reload)
+  const npmScript = useStdio ? "start" : "dev";
+
+  const proc = spawn(`npm run ${npmScript}`, {
     cwd: server.dir,
     shell: true,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: useStdio ? "inherit" : ["ignore", "pipe", "pipe"],
+    env,
   });
 
-  proc.stdout.on("data", (data) => {
-    process.stdout.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
-  });
+  // Only attach event handlers for non-stdio mode (where stdio is piped)
+  if (!useStdio) {
+    proc.stdout.on("data", (data) => {
+      process.stdout.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
+    });
 
-  proc.stderr.on("data", (data) => {
-    process.stderr.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
-  });
+    proc.stderr.on("data", (data) => {
+      process.stderr.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
+    });
+  }
 
   proc.on("exit", (code) => {
     if (code !== null) {

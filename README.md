@@ -8,11 +8,41 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 |--------|------|-------|------------------|----------|
 | `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No | Rate limiting, caching, retry logic |
 | `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No | - |
-| `filesystem` | 3004 | `read_text_file`, `read_media_file`, `read_multiple_files`, `write_file`, `edit_file`, `create_directory`, `list_directory`, `directory_tree`, `move_file`, `search_files`, `get_file_info`, `list_allowed_directories` | No | CORS support |
+| `filesystem` | 3004 | `read_file`, `write_file`, `list_directory`, `create_directory`, `delete_file`, `list_allowed_directories` | No | CORS support |
 | `fetch` | 3005 | `fetch_url` | No | Security hardening, timeout protection, retry logic |
-| `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No | - |
+| `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No | Persistent knowledge graph |
 
 ## Quick Start
+
+### Stdio Transport (Recommended for Claude Code)
+
+The Claude Code CLI has known issues with HTTP/SSE transport where headers are stripped. Use stdio transport instead:
+
+```bash
+# 1. Install all dependencies
+npm install
+
+# 2. Build all servers
+npm run build
+
+# 3. Add servers to Claude Code
+claude mcp add duckduckgo-search --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/duckduckgo-search/dist/index.js
+
+claude mcp add browser --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/browser/dist/index.js
+
+claude mcp add filesystem --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/filesystem/dist/index.js
+
+claude mcp add fetch --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/fetch/dist/index.js
+
+claude mcp add memory --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/memory/dist/index.js
+```
+
+### HTTP Transport
 
 ```bash
 # 1. Install all dependencies
@@ -39,7 +69,7 @@ Servers will be available at their respective ports (e.g., `http://localhost:300
 
 ## Adding a New Server
 
-See [adding-new-server.md](./adding-new-server.md) for detailed instructions.
+See [docs/adding-new-server.md](./docs/adding-new-server.md) for detailed instructions.
 
 ```bash
 # Copy the template
@@ -65,11 +95,18 @@ docker compose --env-file .env.local up duckduckgo-search
 ```
 .
 ├── servers/              # Individual MCP servers
-│   └── duckduckgo-search/
+│   ├── duckduckgo-search/
+│   ├── browser/
+│   ├── filesystem/
+│   ├── fetch/
+│   └── memory/
 ├── docker/               # Dockerfiles for each server
 ├── scripts/              # Development utilities
+│   ├── start-all.js      # Start all servers (HTTP mode)
+│   └── stop-all.js       # Stop all servers
 ├── docker-compose.yml      # Multi-server orchestration
-└── adding-new-server.md    # Guide for adding servers
+└── docs/
+    └── adding-new-server.md    # Guide for adding servers
 ```
 
 ## License

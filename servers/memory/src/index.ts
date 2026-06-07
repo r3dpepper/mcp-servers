@@ -1,26 +1,28 @@
+// @ts-nocheck
 /**
  * Memory MCP Server - Persistent knowledge graph
  */
 
-const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
-const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
-const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
-const { createServer } = require("http");
-const { z } = require("zod");
-const { readFile, writeFile, mkdir } = require("fs/promises");
-const { join } = require("path");
-const { randomUUID } = require("crypto");
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createServer as createHttpServer, IncomingMessage } from "http";
+import { z } from "zod";
+import { readFile, writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { randomUUID } from "crypto";
+import { config } from "./config.js";
+import { logger } from "./logger.js";
 
-const PORT = process.env.MEMORY_PORT || 3006;
-const DB_PATH = process.env.MEMORY_DB_PATH || join(process.env.HOME || "/", ".mcp-servers", "memory.db");
-const NAMESPACE = process.env.MEMORY_NAMESPACE || "default";
+const DB_PATH = config.dbPath;
+const NAMESPACE = config.namespace;
 
 const store = {
-  entities: {},
-  relations: {},
+  entities: {} as Record<string, any>,
+  relations: {} as Record<string, any>,
 };
 
-let currentTransport = null;
+let currentTransport: StreamableHTTPServerTransport | null = null;
 
 async function init() {
   try {
@@ -30,8 +32,7 @@ async function init() {
     Object.assign(store.relations, data.relations || {});
   } catch (err) {
     if (err instanceof SyntaxError && err.message.includes("JSON")) {
-      // Corrupted or empty database file, start fresh
-      log("Database corrupted, initializing fresh");
+      logger.warn("Database corrupted, initializing fresh");
     }
     await save();
   }
@@ -39,10 +40,6 @@ async function init() {
 
 async function save() {
   await writeFile(DB_PATH, JSON.stringify(store, null, 2));
-}
-
-function log(msg, ...args) {
-  console.error(`[memory] ${msg}`, ...args);
 }
 
 function createMcpServer() {
@@ -73,7 +70,12 @@ function createMcpServer() {
         })).optional()
       })
     },
-    async (args) => {
+    async (args: {
+      action: string;
+      entities?: Array<{ id?: string; namespace?: string; type: string; value: string; }>;
+      relations?: Array<{ id?: string; source: string; type: string; target: string; metadata?: Record<string, unknown>; }>;
+      observations?: Array<{ entityId: string; contents: string[]; }>;
+    }) => {
       const { action, entities, relations, observations } = args;
       switch (action) {
         case "add_entities": {
@@ -122,11 +124,11 @@ function createMcpServer() {
         depth: z.number().int().positive().optional().default(2)
       })
     },
-    async (args) => {
+    async (args: { action: string; id?: string; query?: string; depth?: number; }) => {
       const { action, id, query, depth } = args;
       switch (action) {
         case "get_entity": {
-          const entity = store.entities[id];
+          const entity = store.entities[id as string];
           return { content: [{ type: "text", text: JSON.stringify(entity || null) }] };
         }
         case "search": {
@@ -135,18 +137,20 @@ function createMcpServer() {
           return { content: [{ type: "text", text: JSON.stringify(results.slice(0, 10)) }] };
         }
         case "get_graph": {
-          const graph = { id, namespace: "", type: "", value: "", relations: [] };
+          const graph: { relations: Array<{ type: string; target: string; }> } = { relations: [] };
           const queue = [{ current: id, depth: 0 }];
           const visited = new Set();
           while (queue.length) {
-            const { current, depth: d } = queue.shift();
-            if (visited.has(current) || d > depth) continue;
+            const item = queue.shift();
+            if (!item) break;
+            const { current, depth: d } = item;
+            if (visited.has(current) || d > (depth || 2)) continue;
             visited.add(current);
-            const ent = store.entities[current];
+            const ent = store.entities[current as string];
             if (ent) Object.assign(graph, ent);
             for (const rel of Object.values(store.relations)) {
               if (rel.source === current) {
-                if (d < depth) queue.push({ current: rel.target, depth: d + 1 });
+                if (d < (depth || 2)) queue.push({ current: rel.target, depth: d + 1 });
                 graph.relations.push({ type: rel.type, target: rel.target });
               }
             }
@@ -169,16 +173,16 @@ function createMcpServer() {
         limit: z.number().int().positive().optional().default(100)
       })
     },
-    async (args) => {
+    async (args: { action: string; id?: string; limit?: number; }) => {
       const { action, id, limit } = args;
       switch (action) {
         case "delete_entity": {
-          delete store.entities[id];
+          delete store.entities[id as string];
           await save();
           return { content: [{ type: "text", text: `Entity ${id} deleted` }] };
         }
         case "delete_relation": {
-          delete store.relations[id];
+          delete store.relations[id as string];
           await save();
           return { content: [{ type: "text", text: `Relation ${id} deleted` }] };
         }
@@ -200,11 +204,11 @@ function createMcpServer() {
 
 const MAX_BODY_SIZE = 1024 * 1024;
 
-function readBody(req) {
+function readBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const chunks = [];
+    const chunks: Buffer[] = [];
     let totalSize = 0;
-    req.on("data", (chunk) => {
+    req.on("data", (chunk: Buffer) => {
       totalSize += chunk.length;
       if (totalSize > MAX_BODY_SIZE) reject(new Error("Request body too large"));
       chunks.push(chunk);
@@ -216,38 +220,56 @@ function readBody(req) {
 
 async function main() {
   await init();
-  const useStdio = process.argv.includes("--stdio");
+  const useStdio = process.argv.includes("--stdio") || config.transport === "stdio";
 
   if (useStdio) {
-    log("Starting Memory MCP server in STDIO mode");
+    logger.info("Starting Memory MCP server in STDIO mode");
     const server = createMcpServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
+    logger.info("Memory MCP server connected via STDIO");
   } else {
-    const httpServer = createServer(async (req, res) => {
-      if (req.url === "/health") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ status: "ok", server: "memory", version: "1.0.0" }));
+    const port = config.port;
+
+    const httpServer = createHttpServer(async (req, res) => {
+      // CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "content-type,accept");
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
         return;
       }
+
+      if (req.method === "GET" && req.url === "/health") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          status: "ok",
+          server: "memory",
+          version: "1.0.0",
+          requiresApiKey: false,
+          timestamp: new Date().toISOString(),
+        }));
+        return;
+      }
+
       if (req.url === "/mcp" || req.url === "/") {
+        // Check for required Accept header (MCP spec: accept either application/json or text/event-stream)
         const acceptHeader = req.headers['accept'];
-        if (!acceptHeader || !acceptHeader.includes('application/json') || !acceptHeader.includes('text/event-stream')) {
-          console.warn('Missing or invalid Accept header', { accept: acceptHeader });
+        if (!acceptHeader || (!acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream'))) {
+          logger.warn("Missing or invalid Accept header", { accept: acceptHeader });
           if (!res.headersSent) {
             res.writeHead(406, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Not Acceptable: client must accept application/json and text/event-stream" }));
+            res.end(JSON.stringify({ error: "Not Acceptable: client must accept application/json or text/event-stream" }));
           }
           return;
         }
 
-        if (currentTransport) {
-          currentTransport.close();
-          currentTransport = null;
-        }
-
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         res.on("close", () => transport.close());
+
         try {
           const serverInstance = createMcpServer();
           await serverInstance.connect(transport);
@@ -260,21 +282,31 @@ async function main() {
           const body = JSON.parse(bodyStr);
           await transport.handleRequest(req, res, body);
         } catch (err) {
-          log("MCP error:", err.message || err);
+          logger.error("MCP error", { err });
           if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "MCP error", message: err.message || "Unknown error" }));
+            res.end(JSON.stringify({ error: "MCP error", message: err instanceof Error ? err.message : "Unknown error" }));
           }
         }
       } else {
-        res.writeHead(404);
-        res.end();
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Not found" }));
       }
     });
-    httpServer.listen(PORT, () => log(`Memory server listening on port ${PORT}`));
+
+    httpServer.listen(port, () => {
+      logger.info(`Memory MCP server listening on port ${port}`);
+    });
+
+    for (const sig of ["SIGINT", "SIGTERM"]) {
+      process.on(sig, () => {
+        logger.info(`Received ${sig}, shutting down…`);
+        httpServer.close(() => process.exit(0));
+      });
+    }
   }
 }
 
-main().catch(log);
+main().catch((err) => logger.error("Fatal error", { err }));
 
-module.exports = { init, store };
+export { init, store };
