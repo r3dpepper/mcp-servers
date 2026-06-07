@@ -23,7 +23,6 @@
   },
   "permissions": {
     "allow": [
-      "mcp__*",
       "Bash(npm run *)",
       "Bash(node dist/index.js)",
       "Bash(curl -s http://localhost:3002/health)",

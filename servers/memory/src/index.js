@@ -28,8 +28,11 @@ async function init() {
     const data = JSON.parse(await readFile(DB_PATH, "utf8"));
     Object.assign(store.entities, data.entities || {});
     Object.assign(store.relations, data.relations || {});
-  } catch {
-    await mkdir(join(DB_PATH, ".."), { recursive: true });
+  } catch (err) {
+    if (err instanceof SyntaxError && err.message.includes("JSON")) {
+      // Corrupted or empty database file, start fresh
+      log("Database corrupted, initializing fresh");
+    }
     await save();
   }
 }
@@ -250,13 +253,17 @@ async function main() {
           await serverInstance.connect(transport);
           currentTransport = transport;
           const buf = await readBody(req);
-          const body = JSON.parse(buf.toString());
+          const bodyStr = buf.toString();
+          if (!bodyStr.trim()) {
+            throw new Error("Empty request body");
+          }
+          const body = JSON.parse(bodyStr);
           await transport.handleRequest(req, res, body);
         } catch (err) {
-          console.error("[memory] MCP error:", err);
+          log("MCP error:", err.message || err);
           if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "MCP error" }));
+            res.end(JSON.stringify({ error: "MCP error", message: err.message || "Unknown error" }));
           }
         }
       } else {
