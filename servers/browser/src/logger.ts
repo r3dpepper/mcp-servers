@@ -24,7 +24,7 @@ function log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
 
   const entry = {
     level,
-    service: "google-search-mcp",
+    service: "browser-mcp",
     message,
     timestamp: new Date().toISOString(),
     ...meta,
@@ -36,11 +36,8 @@ function log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
         meta ? " " + JSON.stringify(meta) : ""
       }`;
 
-  if (level === "error" || level === "warn") {
-    process.stderr.write(output + "\n");
-  } else {
-    process.stdout.write(output + "\n");
-  }
+  // All logs go to stderr to avoid corrupting stdout (used for MCP JSON-RPC protocol)
+  process.stderr.write(output + "\n");
 }
 
 export const logger = {
