@@ -46,6 +46,13 @@ const SERVERS = [
     color: "\x1b[32m", // green
   },
   {
+    name: "docker",
+    enabledEnv: "DOCKER_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/docker"),
+    color: "\x1b[34m", // blue
+  },
+  {
     name: "memory",
     enabledEnv: "MEMORY_ENABLED",
     defaultEnabled: true,

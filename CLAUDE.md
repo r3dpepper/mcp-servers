@@ -18,6 +18,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 | `filesystem` | 3004 | `filesystem_list_allowed` (wrapper) | No |
 | `fetch` | 3005 | `fetch_url` | No |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No |
+| `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_logs_follow`, `docker_container_stats`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_build`, `docker_events`, `docker_system_info`, `docker_system_df`, `docker_system_prune`, `docker_build_cache_prune` | No |
 
 ---
 
@@ -109,6 +110,10 @@ cd servers/duckduckgo-search && npm run dev
 | `FETCH_MAX_URL_LENGTH` | 2048 | Maximum URL length allowed |
 | `FETCH_MAX_CONTENT_LENGTH` | 1048576 | Maximum response size (1MB) |
 | `FETCH_USER_AGENT` | MCP-Fetch-Server/1.0 | User agent header |
+| `DOCKER_PORT` | 3007 | Docker server port |
+| `DOCKER_SOCKET_PATH` | `/var/run/docker.sock` | Path to Docker Unix socket |
+| `DOCKER_API_VERSION` | `v1.47` | Docker Engine API version |
+| `DOCKER_TIMEOUT_MS` | 10000 | Docker API request timeout |
 
 ---
 
@@ -142,6 +147,17 @@ cd servers/duckduckgo-search && npm run dev
 ### Filesystem
 - **CORS support**: Cross-origin requests enabled
 - **Accept header validation**: Ensures proper MCP protocol compliance
+
+### Docker
+- **Unix socket connection**: Communicates with Docker Engine API via `/var/run/docker.sock`
+- **Container management**: List, inspect, start, stop, restart, remove containers
+- **Image management**: List, inspect, remove images
+- **Build**: Build images from local directories containing Dockerfiles
+- **System info**: Docker version, containers, images, plugins, disk usage
+- **System events**: Monitor container/image lifecycle events in real-time
+- **Pruning**: Clean up unused containers, images, networks, volumes, and build cache
+- **Monitoring**: Live container resource stats (CPU, memory, network I/O) and log following
+- **Configurable API version**: Supports different Docker Engine API versions
 
 ## Testing a tool manually
 
@@ -192,6 +208,9 @@ claude mcp add fetch --transport stdio --scope user --env TRANSPORT=stdio -- \
 
 claude mcp add memory --transport stdio --scope user --env TRANSPORT=stdio -- \
   node /Users/jignesh/Learning/projects/mcp-servers/servers/memory/dist/index.js
+
+claude mcp add docker --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/docker/dist/index.js
 ```
 
 Or configure in `.mcp.json`:
@@ -223,6 +242,11 @@ Or configure in `.mcp.json`:
       "command": "node",
       "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/memory/dist/index.js"],
       "env": { "TRANSPORT": "stdio" }
+    },
+    "docker": {
+      "command": "node",
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/docker/dist/index.js"],
+      "env": { "TRANSPORT": "stdio" }
     }
   }
 }
@@ -247,6 +271,9 @@ claude mcp add fetch --transport http --scope user http://localhost:3005/mcp
 
 # Memory
 claude mcp add memory --transport http --scope user http://localhost:3006/mcp
+
+# Docker
+claude mcp add docker --transport http --scope user http://localhost:3007/mcp
 ```
 
 **Note:** HTTP transport requires proper Accept headers (`application/json` or `text/event-stream`). If you encounter connection issues, switch to Stdio transport.

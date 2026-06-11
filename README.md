@@ -11,6 +11,7 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 | `filesystem` | 3004 | `read_file`, `write_file`, `list_directory`, `create_directory`, `delete_file`, `list_allowed_directories` | No | CORS support |
 | `fetch` | 3005 | `fetch_url` | No | Security hardening, timeout protection, retry logic |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No | Persistent knowledge graph |
+| `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_system_info`, `docker_system_df` | No | Unix socket connection, container & image management |
 
 ## Quick Start
 
@@ -40,6 +41,9 @@ claude mcp add fetch --transport stdio --scope user --env TRANSPORT=stdio -- \
 
 claude mcp add memory --transport stdio --scope user --env TRANSPORT=stdio -- \
   node /Users/jignesh/Learning/projects/mcp-servers/servers/memory/dist/index.js
+
+claude mcp add docker --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/docker/dist/index.js
 ```
 
 ### HTTP Transport
@@ -99,7 +103,8 @@ docker compose --env-file .env.local up duckduckgo-search
 │   ├── browser/
 │   ├── filesystem/
 │   ├── fetch/
-│   └── memory/
+│   ├── memory/
+│   └── docker/
 ├── docker/               # Dockerfiles for each server
 ├── scripts/              # Development utilities
 │   ├── start-all.js      # Start all servers (HTTP mode)

@@ -93,6 +93,34 @@ services:
       mcp.version: "1.0.0"
       mcp.requires_api_key: "false"
 
+  # ── Docker MCP Server (no API key needed) ──────────────────────────────
+  docker:
+    build:
+      context: .
+      dockerfile: docker/docker/Dockerfile
+    container_name: mcp-docker
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_PORT:-3007}:3007"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DOCKER_PORT: 3007
+      DOCKER_API_VERSION: ${DOCKER_API_VERSION:-v1.47}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "docker"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
   # ── Fetch MCP Server (no API key needed) ────────────────────────────────
   fetch:
     build:
