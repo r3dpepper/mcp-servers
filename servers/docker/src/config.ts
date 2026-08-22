@@ -20,6 +20,12 @@ function optionalEnvInt(key: string, fallback: number): number {
   return n;
 }
 
+function optionalEnvBool(key: string, fallback: boolean): boolean {
+  const val = process.env[key];
+  if (!val) return fallback;
+  return ["1", "true", "yes", "on"].includes(val.toLowerCase());
+}
+
 export const config = {
   port: optionalEnvInt("DOCKER_PORT", 3007),
   socketPath: optionalEnv("DOCKER_SOCKET_PATH", "/var/run/docker.sock"),
@@ -29,6 +35,7 @@ export const config = {
   cacheTtlMs: optionalEnvInt("DOCKER_CACHE_TTL_SECONDS", 30) * 1000,
   rateLimitPerMinute: optionalEnvInt("DOCKER_RATE_LIMIT_PER_MINUTE", 120),
   maxOutputBytes: optionalEnvInt("DOCKER_MAX_OUTPUT_BYTES", 65_536),
+  enableExec: optionalEnvBool("DOCKER_ENABLE_EXEC", false),
   // Transport and logging
   transport: optionalEnv("TRANSPORT", "http") as "stdio" | "http",
   nodeEnv: optionalEnv("NODE_ENV", "development"),

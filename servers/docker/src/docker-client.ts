@@ -121,25 +121,37 @@ function dockerRequest<T>(
   });
 }
 
-// ─── Raw stream request (for logs) ───────────────────────────────────────────
+// ─── Raw stream request (for logs, pulls, exec output) ──────────────────────
+
+interface RawRequestOptions {
+  body?: string | Buffer;
+  timeoutMs?: number;
+}
 
 function dockerRequestRawOnce(
   method: string,
-  path: string
+  path: string,
+  options: RawRequestOptions = {}
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const options = {
+    const headers: Record<string, string | number> = {
+      Host: "localhost",
+      Accept: "application/json",
+    };
+    if (options.body) {
+      headers["Content-Type"] = "application/json";
+      headers["Content-Length"] = Buffer.byteLength(options.body);
+    }
+
+    const reqOptions = {
       socketPath: config.socketPath,
       path: `${API_PREFIX}${path}`,
       method,
-      headers: {
-        Host: "localhost",
-        Accept: "application/json",
-      },
-      timeout: config.requestTimeoutMs,
+      headers,
+      timeout: options.timeoutMs ?? config.requestTimeoutMs,
     };
 
-    const req = httpRequest(options, (res: IncomingMessage) => {
+    const req = httpRequest(reqOptions, (res: IncomingMessage) => {
       const chunks: Buffer[] = [];
       res.on("data", (chunk: Buffer) => chunks.push(chunk));
       res.on("end", () => {
@@ -163,13 +175,21 @@ function dockerRequestRawOnce(
       reject(new DockerTimeoutError(`Docker API request timed out`));
     });
 
+    if (options.body) {
+      req.write(options.body);
+    }
     req.end();
   });
 }
 
-function dockerRequestRaw(method: string, path: string): Promise<string> {
-  // Raw requests are log fetches — always GET, always safe to retry
-  return withRetry(() => dockerRequestRawOnce(method, path), {
+function dockerRequestRaw(
+  method: string,
+  path: string,
+  options: RawRequestOptions = {}
+): Promise<string> {
+  // Raw callers fetch logs / stream progress — retry policy matches the
+  // JSON client; POSTs are only retried on connect-phase failures
+  return withRetry(() => dockerRequestRawOnce(method, path, options), {
     isRetryable: (err) => isRetryable(err, method),
   });
 }
@@ -255,6 +275,112 @@ export async function removeImage(id: string, force: boolean = false): Promise<v
   await dockerRequest<void>(
     "DELETE",
     `/images/${id}${force ? "?force=true" : ""}`
+  );
+}
+
+/**
+ * Pull an image from a registry. Streams progress until completion.
+ * Uses the (long) build timeout since pulls routinely exceed the normal
+ * request timeout.
+ */
+export async function pullImage(name: string, tag?: string): Promise<string> {
+  const queryParams = new URLSearchParams();
+  queryParams.set("fromImage", name);
+  if (tag) queryParams.set("tag", tag);
+
+  return dockerRequestRaw("POST", `/images/create?${queryParams.toString()}`, {
+    timeoutMs: config.buildTimeoutMs,
+  }).then((output) => {
+    // Progress is newline-delimited JSON; the last line carries the final status
+    const lines = output.trim().split("\n").filter(Boolean);
+    return lines.length > 0 ? lines[lines.length - 1] : "Pull complete";
+  });
+}
+
+// ─── Volume operations ───────────────────────────────────────────────────────
+
+export interface DockerVolume {
+  Name: string;
+  Driver: string;
+  Mountpoint: string;
+  CreatedAt?: string;
+  Labels?: Record<string, string> | null;
+  Options?: Record<string, string> | null;
+}
+
+export async function listVolumes(): Promise<DockerVolume[]> {
+  const result = await dockerRequest<{ Volumes: DockerVolume[] | null }>("GET", "/volumes");
+  return result.Volumes ?? [];
+}
+
+export async function inspectVolume(name: string): Promise<unknown> {
+  return dockerRequest("GET", `/volumes/${encodeURIComponent(name)}`);
+}
+
+export async function createVolume(
+  name: string,
+  driver?: string,
+  labels?: Record<string, string>
+): Promise<unknown> {
+  const body = JSON.stringify({
+    Name: name,
+    ...(driver ? { Driver: driver } : {}),
+    ...(labels ? { Labels: labels } : {}),
+  });
+  return dockerRequest("POST", "/volumes/create", body);
+}
+
+export async function removeVolume(name: string, force: boolean = false): Promise<void> {
+  await dockerRequest<void>(
+    "DELETE",
+    `/volumes/${encodeURIComponent(name)}${force ? "?force=true" : ""}`
+  );
+}
+
+// ─── Network operations ──────────────────────────────────────────────────────
+
+export interface DockerNetwork {
+  Id?: string;
+  Name: string;
+  Driver: string;
+  Scope: string;
+  Internal?: boolean;
+  Attachable?: boolean;
+  Containers?: Record<string, { Name?: string }>;
+}
+
+export async function listNetworks(): Promise<DockerNetwork[]> {
+  return dockerRequest<DockerNetwork[]>("GET", "/networks");
+}
+
+export async function createNetwork(
+  name: string,
+  driver: string = "bridge"
+): Promise<unknown> {
+  return dockerRequest("POST", "/networks/create", JSON.stringify({ Name: name, Driver: driver }));
+}
+
+export async function removeNetwork(id: string): Promise<void> {
+  await dockerRequest<void>("DELETE", `/networks/${id}`);
+}
+
+export async function connectNetwork(networkId: string, containerId: string): Promise<void> {
+  await dockerRequest<void>(
+    "POST",
+    `/networks/${networkId}/connect`,
+    JSON.stringify({ Container: containerId })
+  );
+}
+
+export async function disconnectNetwork(
+  networkId: string,
+  containerId: string,
+  force: boolean = false
+): Promise<void> {
+  await dockerRequest<void>(
+    "POST",
+    `/networks/${networkId}/disconnect`,
+    JSON.stringify({ Container: containerId, Force: force })
   );
 }
 
@@ -596,6 +722,116 @@ export interface ContainerStats {
  */
 export async function getContainerStats(id: string): Promise<ContainerStats> {
   return dockerRequest<ContainerStats>("GET", `/containers/${id}/stats?stream=false`);
+}
+
+// ─── Container processes (top) ───────────────────────────────────────────────
+
+export interface ContainerTop {
+  Titles: string[];
+  Processes: string[][];
+}
+
+export async function getContainerTop(id: string): Promise<ContainerTop> {
+  return dockerRequest<ContainerTop>("GET", `/containers/${id}/top`);
+}
+
+// ─── Container rename ────────────────────────────────────────────────────────
+
+export async function renameContainer(id: string, newName: string): Promise<void> {
+  await dockerRequest<void>(
+    "POST",
+    `/containers/${id}/rename?name=${encodeURIComponent(newName)}`
+  );
+}
+
+// ─── Exec ────────────────────────────────────────────────────────────────────
+
+export interface ExecOptions {
+  workdir?: string;
+  env?: Record<string, string>;
+  user?: string;
+}
+
+export interface ExecResult {
+  output: string;
+  exitCode: number;
+}
+
+/**
+ * Demultiplex a non-TTY exec stream: frames are
+ * [streamType(1B)][0x00 x3][size(4B BE)][payload]. Falls back to dumping the
+ * buffer raw when the shape doesn't match (e.g. TTY mode).
+ */
+function demuxStream(buf: Buffer): string {
+  let out = "";
+  let off = 0;
+  while (off + 8 <= buf.length) {
+    const streamType = buf[off];
+    const size = buf.readUInt32BE(off + 4);
+    if (streamType > 2 || off + 8 + size > buf.length) {
+      // Not a valid frame header — treat remainder as unframed (TTY) output
+      out += buf.slice(off).toString("utf8");
+      return out;
+    }
+    out += buf.slice(off + 8, off + 8 + size).toString("utf8");
+    off += 8 + size;
+  }
+  if (off < buf.length) {
+    out += buf.slice(off).toString("utf8");
+  }
+  return out;
+}
+
+/**
+ * Execute a command inside a container and collect its output + exit code.
+ *
+ * Gated behind DOCKER_ENABLE_EXEC at the tool layer — this is arbitrary code
+ * execution inside a container and must stay opt-in.
+ */
+export async function execInContainer(
+  id: string,
+  cmd: string[],
+  options: ExecOptions = {}
+): Promise<ExecResult> {
+  const createBody = JSON.stringify({
+    AttachStdout: true,
+    AttachStderr: true,
+    Cmd: cmd,
+    ...(options.workdir ? { WorkingDir: options.workdir } : {}),
+    ...(options.env
+      ? { Env: Object.entries(options.env).map(([k, v]) => `${k}=${v}`) }
+      : {}),
+    ...(options.user ? { User: options.user } : {}),
+  });
+
+  const created = await dockerRequest<{ Id: string }>(
+    "POST",
+    `/containers/${id}/exec`,
+    createBody
+  );
+
+  // Start attaches the raw stdout/stderr stream; demux it into clean text.
+  // Use the build timeout — commands can legitimately run for minutes.
+  const raw = await dockerRequestRaw(
+    "POST",
+    `/exec/${created.Id}/start`,
+    { body: JSON.stringify({ Detach: false, Tty: false }), timeoutMs: config.buildTimeoutMs }
+  );
+  const output = demuxStream(Buffer.from(raw));
+
+  // The start response does not carry the exit status; ask for it explicitly
+  let exitCode = 0;
+  try {
+    const state = await dockerRequest<{ ExitCode: number | null }>(
+      "GET",
+      `/exec/${created.Id}/json`
+    );
+    exitCode = state.ExitCode ?? 0;
+  } catch {
+    // Inspect failures must not lose already-captured output
+  }
+
+  return { output, exitCode };
 }
 
 // ─── Log follow ──────────────────────────────────────────────────────────────

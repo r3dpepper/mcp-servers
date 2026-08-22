@@ -16,6 +16,11 @@ export function ok(text: string): ToolResult {
   return { content: [{ type: "text", text: truncateOutput(text) }] };
 }
 
+/** Success-shaped result flagged as an error (e.g. non-zero command exit). */
+export function okAsError(text: string): ToolResult {
+  return { ...ok(text), isError: true };
+}
+
 /** Error result with a consistent "<action> failed: <message>" shape. */
 export function fail(action: string, err: unknown): ToolResult {
   const message = err instanceof Error ? err.message : String(err);

@@ -1,6 +1,6 @@
 {
   "name": "@mcp-hub/docker",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Docker Engine MCP server for container and image management",
   "keywords": [
     "model-context-protocol",

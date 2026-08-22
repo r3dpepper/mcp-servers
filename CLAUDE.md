@@ -18,7 +18,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 | `filesystem` | 3004 | `filesystem_list_allowed` (wrapper) | No |
 | `fetch` | 3005 | `fetch_url` | No |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No |
-| `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_logs_follow`, `docker_container_stats`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_build`, `docker_events`, `docker_system_info`, `docker_system_df`, `docker_system_prune`, `docker_build_cache_prune` | No |
+| `docker` | 3007 | 30 tools: containers (`list/inspect/logs/logs_follow/stats/start/stop/restart/remove/exec/top/rename`), images (`list/inspect/remove/pull`), volumes (`list/create/remove`), networks (`list/create/connect/disconnect/remove`), plus `build/events/system_info/system_df/system_prune/build_cache_prune`. Exec gated behind `DOCKER_ENABLE_EXEC=true` | No |
 | `playwright` *(external)* | 3008 | 24 tools: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_take_screenshot`, `browser_tabs`, `browser_evaluate`, … (full list via `tools/list`) | No |
 
 ---
@@ -177,6 +177,7 @@ chmod +x scripts/manage-mcp-servers.sh
 | `DOCKER_CACHE_TTL_SECONDS` | 30 | TTL for cached read-only results (lists, inspects, system info) |
 | `DOCKER_RATE_LIMIT_PER_MINUTE` | 120 | Per-client HTTP rate limit (HTTP transport only) |
 | `DOCKER_MAX_OUTPUT_BYTES` | 65536 | Max tool output size before truncation |
+| `DOCKER_ENABLE_EXEC` | false | Allow running commands inside containers via `docker_container_exec` |
 
 ---
 
@@ -226,6 +227,11 @@ chmod +x scripts/manage-mcp-servers.sh
 - **TTL caching**: Lists, inspects, and system info cached briefly; entire cache invalidated on every successful mutation
 - **Rate limiting**: Per-client HTTP rate limit protects the daemon from runaway clients (HTTP transport only)
 - **Output truncation**: Tool output capped at `DOCKER_MAX_OUTPUT_BYTES` so huge logs/inspects cannot blow up LLM context windows
+- **Volume management**: List, create, and remove volumes
+- **Network management**: List and create networks; connect/disconnect containers
+- **Container exec**: Run commands inside containers with demultiplexed stdout/stderr and exit codes — disabled unless `DOCKER_ENABLE_EXEC=true`
+- **Image pull**: Pull images from registries (build timeout applies)
+- **Process inspection**: `docker top`-style process listing and container rename
 
 ## Testing a tool manually
 
