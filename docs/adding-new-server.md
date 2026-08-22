@@ -1,6 +1,6 @@
 # Adding a New MCP Server - Comprehensive Guide
 
-This guide explains how to add a new MCP server to the hub, following the exact same patterns as `duckduckgo-search`, with additional considerations for design, optimization, and verification.
+This guide explains how to add a new MCP server to the hub, following the exact same patterns as `ddg-search`, with additional considerations for design, optimization, and verification.
 
 ---
 
@@ -49,11 +49,11 @@ graph TD
 
 ## Step 1 — Copy the Template
 
-The fastest way to start is to copy the `duckduckgo-search` server:
+The fastest way to start is to copy the `ddg-search` server:
 
 ```bash
 # Copy the entire server directory
-cp -r servers/duckduckgo-search servers/<your-server-name>
+cp -r servers/ddg-search servers/<your-server-name>
 ```
 
 **Important:** Keep the `.env.example` file in the project root to maintain centralized environment configuration. Do NOT copy it to individual server directories.
@@ -81,6 +81,9 @@ Each tool is a file in `src/tools/`. A tool has four parts:
 ```typescript
 export const myTool = {
   // 1. The name Claude will see and call
+  //    MUST stay under 64 characters (some MCP clients truncate tool names
+  //    around that limit). Clients also prefix it: mcp__<server-name>__<tool>,
+  //    so keep server and tool names short.
   name: "my_tool_name",
 
   // 2. Description — be clear and specific
@@ -154,11 +157,11 @@ Good patterns:
 
 ```bash
 mkdir -p docker/<your-server-name>
-cp docker/duckduckgo-search/Dockerfile docker/<your-server-name>/Dockerfile
+cp docker/ddg-search/Dockerfile docker/<your-server-name>/Dockerfile
 ```
 
 Edit the Dockerfile:
-- Update the workspace path: `servers/duckduckgo-search` → `servers/<your-server-name>`
+- Update the workspace path: `servers/ddg-search` → `servers/<your-server-name>`
 - Update the exposed port
 
 ---
@@ -206,7 +209,7 @@ Update the `SERVERS` array in `scripts/manage-mcp-servers.sh` to include your ne
 
 ```bash
 SERVERS=(
-    "duckduckgo-search:3002"
+    "ddg-search:3002"
     "browser:3003"
     "filesystem:3004"
     "fetch:3005"
@@ -227,7 +230,7 @@ Update the server tables in `CLAUDE.md` and `README.md`:
 ```markdown
 | Server | Port | Tools |
 |--------|------|-------|
-| `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` |
+| `ddg-search` | 3002 | `ddg_search`, `ddg_instant_answer` |
 | `your-server` | 3003 | `your_tool_1`, `your_tool_2` |
 ```
 
@@ -306,6 +309,7 @@ Before considering the task complete, verify:
 - [ ] Tools return structured errors (`isError: true`) for invalid inputs
 - [ ] Server starts and shuts down gracefully with SIGINT/SIGTERM
 - [ ] Server works in both HTTP and STDIO transports (test by setting `TRANSPORT=stdio`)
+- [ ] Every tool name is under 64 characters (some MCP clients truncate around that limit)
 - [ ] Docker container builds and runs successfully (if Docker support added)
 - [ ] Server is discoverable and usable in Claude Code after adding via `claude mcp add`
 - [ ] No excessive memory usage observed during testing

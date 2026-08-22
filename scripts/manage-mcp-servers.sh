@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Server configurations: name:port
 SERVERS=(
-    "duckduckgo-search:3002"
+    "ddg-search:3002"
     "browser:3003"
     "filesystem:3004"
     "fetch:3005"
@@ -160,17 +160,22 @@ list_servers() {
 check_status() {
     log_info "Checking MCP server status (HTTP /health)..."
     echo ""
-    printf "  %-22s %-6s %s\n" "SERVER" "PORT" "STATUS"
+    printf "  %-22s %-6s %-8s %s\n" "SERVER" "PORT" "PID" "STATUS"
 
     local running=0
     for server_info in "${SERVERS[@]}"; do
         IFS=':' read -r name port <<< "$server_info"
+        local pid="-"
         local status="${RED}down${NC}"
         if is_running "${port}"; then
             status="${GREEN}running${NC}"
             running=$((running + 1))
+            # PID of whatever is listening on the port ("-" if it vanished mid-check)
+            pid=$(lsof -ti tcp:"${port}" -sTCP:LISTEN 2>/dev/null | head -1)
+            [[ -z "${pid}" ]] && pid="-"
         fi
-        printf "  %-22s %-6s %b\n" "${name}" "${port}" "${status}"
+        # PID before the colored STATUS so column padding ignores escape codes
+        printf "  %-22s %-6s %-8s %b\n" "${name}" "${port}" "${pid}" "${status}"
     done
 
     echo ""

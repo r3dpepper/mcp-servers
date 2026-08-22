@@ -13,7 +13,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 
 | Server | Port | Tools | API Key |
 |--------|------|-------|---------|
-| `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No |
+| `ddg-search` | 3002 | `ddg_search`, `ddg_instant_answer` | No |
 | `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No |
 | `filesystem` | 3004 | `filesystem_list_allowed` (wrapper) | No |
 | `fetch` | 3005 | `fetch_url` | No |
@@ -37,7 +37,7 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 ```
 .
 ├── servers/                          ← Individual MCP servers
-│   └── duckduckgo-search/
+│   └── ddg-search/
 │       ├── src/
 │       │   ├── index.ts              ← Server entry
 │       │   ├── config.ts             ← Environment config
@@ -92,7 +92,7 @@ npm run stop-fetch        # Stop only the fetch server
 npm run stop-memory       # Stop only the memory server
 
 # Start a single server (for testing)
-cd servers/duckduckgo-search && npm run dev
+cd servers/ddg-search && npm run dev
 ```
 
 ## MCP Server Management Script
@@ -131,8 +131,8 @@ chmod +x scripts/manage-mcp-servers.sh
 ```
 
 **Server naming convention:**
-- HTTP: `duckduckgo-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`
-- Stdio: `duckduckgo-search-stdio`, `browser-stdio`, `filesystem-stdio`, `fetch-stdio`, `memory-stdio`, `docker-stdio`
+- HTTP: `ddg-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`
+- Stdio: `ddg-search-stdio`, `browser-stdio`, `filesystem-stdio`, `fetch-stdio`, `memory-stdio`, `docker-stdio`
 
 > **Note:** When adding new MCP servers, update the `SERVERS` array in `scripts/manage-mcp-servers.sh` to include the new server name and port.
 
@@ -142,11 +142,11 @@ chmod +x scripts/manage-mcp-servers.sh
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DUCKDUCKGO_SEARCH_PORT` | 3002 | DuckDuckGo server port |
-| `DUCKDUCKGO_SEARCH_MAX_RESULTS` | 10 | Max results per search (max: 50) |
-| `DUCKDUCKGO_TIMEOUT_MS` | 10000 | Request timeout in milliseconds |
-| `DUCKDUCKGO_RATE_LIMIT_PER_MINUTE` | 10 | Rate limit for search requests |
-| `DUCKDUCKGO_CACHE_TTL_SECONDS` | 300 | Search result cache TTL (5 minutes) |
+| `DDG_PORT` | 3002 | DuckDuckGo server port |
+| `DDG_MAX_RESULTS` | 10 | Max results per search (max: 50) |
+| `DDG_TIMEOUT_MS` | 10000 | Request timeout in milliseconds |
+| `DDG_RATE_LIMIT_PER_MINUTE` | 10 | Rate limit for search requests |
+| `DDG_CACHE_TTL_SECONDS` | 300 | Search result cache TTL (5 minutes) |
 | `MEMORY_PORT` | 3006 | Memory server port |
 | `MEMORY_DB_PATH` | `~/.mcp-servers/memory.db` | Path to memory database file |
 | `MEMORY_NAMESPACE` | `default` | Namespace for memory entities |
@@ -162,6 +162,10 @@ chmod +x scripts/manage-mcp-servers.sh
 | `DOCKER_SOCKET_PATH` | `/var/run/docker.sock` | Path to Docker Unix socket |
 | `DOCKER_API_VERSION` | `v1.47` | Docker Engine API version |
 | `DOCKER_TIMEOUT_MS` | 10000 | Docker API request timeout |
+| `DOCKER_BUILD_TIMEOUT_MS` | 600000 | Image build request timeout |
+| `DOCKER_CACHE_TTL_SECONDS` | 30 | TTL for cached read-only results (lists, inspects, system info) |
+| `DOCKER_RATE_LIMIT_PER_MINUTE` | 120 | Per-client HTTP rate limit (HTTP transport only) |
+| `DOCKER_MAX_OUTPUT_BYTES` | 65536 | Max tool output size before truncation |
 
 ---
 
@@ -173,6 +177,7 @@ chmod +x scripts/manage-mcp-servers.sh
 - `config.ts` in each server is the only place env vars are read
 - Use `logger` from `logger.ts`, never `console.log` directly
 - Use `zod` for all input validation
+- **Tool names must stay under 64 characters** — some MCP clients truncate tool names around that limit. Clients also prefix tools (`mcp__<server-name>__<tool>`), so keep both server and tool names short
 
 ---
 
@@ -206,6 +211,10 @@ chmod +x scripts/manage-mcp-servers.sh
 - **Pruning**: Clean up unused containers, images, networks, volumes, and build cache
 - **Monitoring**: Live container resource stats (CPU, memory, network I/O) and log following
 - **Configurable API version**: Supports different Docker Engine API versions
+- **Retry with backoff**: Connect-phase failures always retried; client timeouts and 5xx responses retried only for read-only (GET) calls
+- **TTL caching**: Lists, inspects, and system info cached briefly; entire cache invalidated on every successful mutation
+- **Rate limiting**: Per-client HTTP rate limit protects the daemon from runaway clients (HTTP transport only)
+- **Output truncation**: Tool output capped at `DOCKER_MAX_OUTPUT_BYTES` so huge logs/inspects cannot blow up LLM context windows
 
 ## Testing a tool manually
 
@@ -217,7 +226,7 @@ curl http://localhost:3002/health
 curl -s -X POST http://localhost:3002/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"duckduckgo_search","arguments":{"query":"TypeScript MCP"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ddg_search","arguments":{"query":"TypeScript MCP"}}}'
 ```
 
 ---
@@ -242,8 +251,8 @@ Or register via Claude CLI with `claude mcp add`:
 npm run build
 
 # Add servers via CLI (stdio transport)
-claude mcp add duckduckgo-search --transport stdio --scope user --env TRANSPORT=stdio -- \
-  node /Users/jignesh/Learning/projects/mcp-servers/servers/duckduckgo-search/dist/index.js
+claude mcp add ddg-search --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/ddg-search/dist/index.js
 
 claude mcp add browser --transport stdio --scope user --env TRANSPORT=stdio -- \
   node /Users/jignesh/Learning/projects/mcp-servers/servers/browser/dist/index.js
@@ -266,9 +275,9 @@ Or configure in `.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "command": "node",
-      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/duckduckgo-search/dist/index.js"],
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/ddg-search/dist/index.js"],
       "env": { "TRANSPORT": "stdio" }
     },
     "browser": {
@@ -306,7 +315,7 @@ Register the MCP servers with Claude Code using the `claude mcp add` command:
 
 ```bash
 # DuckDuckGo Search
-claude mcp add duckduckgo-search --transport http --scope user http://localhost:3002/mcp
+claude mcp add ddg-search --transport http --scope user http://localhost:3002/mcp
 
 # Browser Automation
 claude mcp add browser --transport http --scope user http://localhost:3003/mcp

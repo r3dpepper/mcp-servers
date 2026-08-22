@@ -6,12 +6,12 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 
 | Server | Port | Tools | API Key Required | Features |
 |--------|------|-------|------------------|----------|
-| `duckduckgo-search` | 3002 | `duckduckgo_search`, `duckduckgo_instant_answer` | No | Rate limiting, caching, retry logic |
+| `ddg-search` | 3002 | `ddg_search`, `ddg_instant_answer` | No | Rate limiting, caching, retry logic |
 | `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No | - |
 | `filesystem` | 3004 | `read_file`, `write_file`, `list_directory`, `create_directory`, `delete_file`, `list_allowed_directories` | No | CORS support |
 | `fetch` | 3005 | `fetch_url` | No | Security hardening, timeout protection, retry logic |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No | Persistent knowledge graph |
-| `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_system_info`, `docker_system_df` | No | Unix socket connection, container & image management |
+| `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_system_info`, `docker_system_df` | No | Unix socket connection, retry logic, TTL caching, rate limiting, output truncation |
 
 ## Quick Start
 
@@ -51,8 +51,8 @@ chmod +x scripts/manage-mcp-servers.sh
 ```
 
 **Server naming convention:**
-- HTTP: `duckduckgo-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`
-- Stdio: `duckduckgo-search-stdio`, `browser-stdio`, `filesystem-stdio`, `fetch-stdio`, `memory-stdio`, `docker-stdio`
+- HTTP: `ddg-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`
+- Stdio: `ddg-search-stdio`, `browser-stdio`, `filesystem-stdio`, `fetch-stdio`, `memory-stdio`, `docker-stdio`
 
 ---
 
@@ -68,8 +68,8 @@ npm install
 npm run build
 
 # 3. Add servers to Claude Code
-claude mcp add duckduckgo-search --transport stdio --scope user --env TRANSPORT=stdio -- \
-  node /Users/jignesh/Learning/projects/mcp-servers/servers/duckduckgo-search/dist/index.js
+claude mcp add ddg-search --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/ddg-search/dist/index.js
 
 claude mcp add browser --transport stdio --scope user --env TRANSPORT=stdio -- \
   node /Users/jignesh/Learning/projects/mcp-servers/servers/browser/dist/index.js
@@ -118,7 +118,7 @@ See [docs/adding-new-server.md](./docs/adding-new-server.md) for detailed instru
 
 ```bash
 # Copy the template
-cp -r servers/duckduckgo-search servers/my-new-server
+cp -r servers/ddg-search servers/my-new-server
 
 # Update package.json name and config
 # Update scripts/start-all.js to register it
@@ -132,7 +132,7 @@ cp -r servers/duckduckgo-search servers/my-new-server
 docker compose --env-file .env.local up --build
 
 # Start a single server
-docker compose --env-file .env.local up duckduckgo-search
+docker compose --env-file .env.local up ddg-search
 ```
 
 ## Project Structure
@@ -140,7 +140,7 @@ docker compose --env-file .env.local up duckduckgo-search
 ```
 .
 ├── servers/              # Individual MCP servers
-│   ├── duckduckgo-search/
+│   ├── ddg-search/
 │   ├── browser/
 │   ├── filesystem/
 │   ├── fetch/
