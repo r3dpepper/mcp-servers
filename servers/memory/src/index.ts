@@ -45,6 +45,24 @@ async function save() {
 function createMcpServer() {
   const server = new McpServer({ name: "memory", version: "1.0.0" });
 
+  // Add tools/list handler for MCP protocol compliance
+  server.registerTool(
+    "list_tools",
+    {
+      description: "List available tools",
+      inputSchema: z.object({}),
+    },
+    async () => {
+      const toolNames = [
+        "memory_write",
+        "memory_read",
+        "memory_manage",
+        "list_tools"
+      ];
+      return { content: [{ type: "text", text: toolNames.join("\n") }] };
+    }
+  );
+
   server.registerTool(
     "memory_write",
     {

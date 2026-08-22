@@ -58,6 +58,25 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+/**
+ * Handle tools/list protocol method
+ */
+server.registerTool(
+  "list_tools",
+  {
+    description: "List all available tools",
+    inputSchema: z.object({}),
+  },
+  async () => {
+    const toolNames = ["fetch_url", "list_tools"];
+    return {
+      content: [
+        { type: "text", text: toolNames.join("\n") },
+      ],
+    };
+  }
+);
+
 // Register tool with explicit typing to avoid deep instantiation
 server.registerTool(
   "fetch_url",
@@ -234,10 +253,12 @@ if (useStdio) {
 
       try {
         await server.connect(transport);
-        const body = await readBody(req).then((b) => {
-          const s = b.toString();
-          return s ? JSON.parse(s) : undefined;
-        });
+        const buf = await readBody(req);
+        const bodyStr = buf.toString();
+        if (!bodyStr.trim()) {
+          throw new Error("Empty request body");
+        }
+        const body = JSON.parse(bodyStr);
         logger.debug('Handling MCP request', { body });
         await transport.handleRequest(req, res, body);
       } catch (err) {
