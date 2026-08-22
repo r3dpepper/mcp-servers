@@ -9,13 +9,47 @@ import { request as httpRequest, IncomingMessage } from "http";
 import { spawn } from "child_process";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
+import { withRetry } from "./retry.js";
 
 /** Docker API v1.47 base path */
 const API_PREFIX = `/${config.apiVersion}`;
 
+// ─── Typed errors (drive the retry policy) ───────────────────────────────────
+
+/** The request never got a response — safe to retry for any method. */
+export class DockerConnectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DockerConnectionError";
+  }
+}
+
+/** Client-side timeout — request state unknown; only retried for GETs. */
+export class DockerTimeoutError extends DockerConnectionError {}
+
+/** Daemon responded with a non-2xx status; only >=500 on GETs are retried. */
+export class DockerApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "DockerApiError";
+  }
+}
+
+/**
+ * Retry policy: connect-phase failures are always retried; timeouts and
+ * 5xx responses are only retried when the call was a read (GET), since
+ * mutating calls must not be replayed blindly.
+ */
+function isRetryable(err: Error, method: string): boolean {
+  if (err instanceof DockerTimeoutError) return method === "GET";
+  if (err instanceof DockerConnectionError) return true;
+  if (err instanceof DockerApiError) return method === "GET" && err.status >= 500;
+  return false;
+}
+
 // ─── Low-level HTTP request over Unix socket ────────────────────────────────
 
-function dockerRequest<T>(
+function dockerRequestOnce<T>(
   method: string,
   path: string,
   body?: string | Buffer
@@ -55,19 +89,19 @@ function dockerRequest<T>(
           }
         } else {
           const message = data.length > 0 ? data.toString() : `HTTP ${statusCode}`;
-          reject(new Error(`Docker API error (${statusCode}): ${message}`));
+          reject(new DockerApiError(`Docker API error (${statusCode}): ${message}`, statusCode));
         }
       });
     });
 
     req.on("error", (err) => {
       logger.error("Docker API request failed", { error: err.message, method, path });
-      reject(new Error(`Docker API connection error: ${err.message}`));
+      reject(new DockerConnectionError(`Docker API connection error: ${err.message}`));
     });
 
     req.on("timeout", () => {
       req.destroy();
-      reject(new Error(`Docker API request timed out after ${config.requestTimeoutMs}ms`));
+      reject(new DockerTimeoutError(`Docker API request timed out after ${config.requestTimeoutMs}ms`));
     });
 
     if (body) {
@@ -77,9 +111,19 @@ function dockerRequest<T>(
   });
 }
 
+function dockerRequest<T>(
+  method: string,
+  path: string,
+  body?: string | Buffer
+): Promise<T> {
+  return withRetry(() => dockerRequestOnce<T>(method, path, body), {
+    isRetryable: (err) => isRetryable(err, method),
+  });
+}
+
 // ─── Raw stream request (for logs) ───────────────────────────────────────────
 
-function dockerRequestRaw(
+function dockerRequestRawOnce(
   method: string,
   path: string
 ): Promise<string> {
@@ -105,21 +149,28 @@ function dockerRequestRaw(
           resolve(data.toString());
         } else {
           const message = data.length > 0 ? data.toString() : `HTTP ${statusCode}`;
-          reject(new Error(`Docker API error (${statusCode}): ${message}`));
+          reject(new DockerApiError(`Docker API error (${statusCode}): ${message}`, statusCode));
         }
       });
     });
 
     req.on("error", (err) => {
-      reject(new Error(`Docker API connection error: ${err.message}`));
+      reject(new DockerConnectionError(`Docker API connection error: ${err.message}`));
     });
 
     req.on("timeout", () => {
       req.destroy();
-      reject(new Error(`Docker API request timed out`));
+      reject(new DockerTimeoutError(`Docker API request timed out`));
     });
 
     req.end();
+  });
+}
+
+function dockerRequestRaw(method: string, path: string): Promise<string> {
+  // Raw requests are log fetches — always GET, always safe to retry
+  return withRetry(() => dockerRequestRawOnce(method, path), {
+    isRetryable: (err) => isRetryable(err, method),
   });
 }
 
@@ -254,7 +305,7 @@ export async function buildImage(
     path: `${API_PREFIX}${apiPath}`,
     method: "POST",
     headers,
-    timeout: 600_000, // 10 min for builds
+    timeout: config.buildTimeoutMs,
   };
 
   return new Promise((resolve, reject) => {

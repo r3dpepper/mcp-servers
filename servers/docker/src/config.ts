@@ -25,6 +25,10 @@ export const config = {
   socketPath: optionalEnv("DOCKER_SOCKET_PATH", "/var/run/docker.sock"),
   apiVersion: optionalEnv("DOCKER_API_VERSION", "v1.47"),
   requestTimeoutMs: optionalEnvInt("DOCKER_TIMEOUT_MS", 10000),
+  buildTimeoutMs: optionalEnvInt("DOCKER_BUILD_TIMEOUT_MS", 600_000),
+  cacheTtlMs: optionalEnvInt("DOCKER_CACHE_TTL_SECONDS", 30) * 1000,
+  rateLimitPerMinute: optionalEnvInt("DOCKER_RATE_LIMIT_PER_MINUTE", 120),
+  maxOutputBytes: optionalEnvInt("DOCKER_MAX_OUTPUT_BYTES", 65_536),
   // Transport and logging
   transport: optionalEnv("TRANSPORT", "http") as "stdio" | "http",
   nodeEnv: optionalEnv("NODE_ENV", "development"),
