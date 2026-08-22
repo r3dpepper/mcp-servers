@@ -9,9 +9,9 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 | `ddg-search` | 3002 | `ddg_search`, `ddg_instant_answer` | No | Rate limiting, caching, retry logic |
 | `browser` | 3003 | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`, `browser_evaluate`, `browser_extract` | No | - |
 | `filesystem` | 3004 | `read_file`, `write_file`, `list_directory`, `create_directory`, `delete_file`, `list_allowed_directories` | No | CORS support |
-| `fetch` | 3005 | `fetch_url` | No | Security hardening, timeout protection, retry logic |
+| `fetch` | 3005 | `fetch_url` | No | Security hardening, timeout protection, retry logic, paginated reads (`max_length`/`start_index`) |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No | Persistent knowledge graph |
-| `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_system_info`, `docker_system_df` | No | Unix socket connection, retry logic, TTL caching, rate limiting, output truncation |
+| `docker` | 3007 | 30 tools — containers, images, volumes, networks, exec (opt-in), build, events, prune, system info/df, stats, logs | No | Unix socket connection, retry logic, TTL caching, rate limiting, output truncation |
 | `playwright` *(external)* | 3008 | 24 tools — accessibility-tree browser automation: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_fill_form`, `browser_tabs`, `browser_take_screenshot`, … | No | Published npm package (`@playwright/mcp`), version-pinned; see [docs/adding-external-server.md](./docs/adding-external-server.md) |
 
 ## Quick Start

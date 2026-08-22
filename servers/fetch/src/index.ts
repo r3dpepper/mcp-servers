@@ -78,15 +78,25 @@ server.registerTool(
 );
 
 // Register tool with explicit typing to avoid deep instantiation
+
+/** Default page size for paginated reads (characters) */
+const DEFAULT_MAX_LENGTH = 20_000;
+
 server.registerTool(
   "fetch_url",
   {
-    description: "Fetches a URL and returns its contents as plain text",
+    description:
+      "Fetches a URL and returns its contents as plain text. Large documents are returned " +
+      "in pages — call again with start_index to continue reading where the previous page ended.",
     inputSchema: z.object({
       url: z.string().url().describe("URL to fetch"),
+      max_length: z.number().int().positive().max(200_000).optional()
+        .describe(`Maximum number of characters to return (default: ${DEFAULT_MAX_LENGTH})`),
+      start_index: z.number().int().min(0).optional()
+        .describe("Character offset to start from — use the start_index reported by a previous page"),
     }),
   },
-  async (args: { url: string }) => {
+  async (args: { url: string; max_length?: number; start_index?: number }) => {
     const { url } = args;
 
     // Security: Validate URL scheme
@@ -150,8 +160,27 @@ server.registerTool(
       };
 
       const text = await withRetry(fetchFn);
+
+      // Paginated read: return one slice plus a resume hint, so a huge
+      // document cannot flood the caller's context in one shot
+      const maxLength = args.max_length ?? DEFAULT_MAX_LENGTH;
+      const startIndex = args.start_index ?? 0;
+
+      if (startIndex >= text.length) {
+        return {
+          content: [{ type: "text", text: `No more content — document is ${text.length} characters.` }],
+        };
+      }
+
+      const chunk = text.slice(startIndex, startIndex + maxLength);
+      const nextIndex = startIndex + chunk.length;
+      const remaining = text.length - nextIndex;
+      const trailer = remaining > 0
+        ? `\n\n[characters ${startIndex}–${nextIndex} of ${text.length}; call again with start_index=${nextIndex} to continue]`
+        : `\n\n[end of document — ${text.length} characters total]`;
+
       return {
-        content: [{ type: "text", text }],
+        content: [{ type: "text", text: chunk + trailer }],
       };
     } catch (error) {
       logger.error("Fetch failed", { error, url });
