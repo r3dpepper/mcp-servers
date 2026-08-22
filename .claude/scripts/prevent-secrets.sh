@@ -27,6 +27,10 @@ SECRET_PATTERNS=(
 SECURE_EXIT_CODE=2
 
 for file in $STAGED_FILES; do
+  # Skip generated files that commonly trigger false positives
+  if [[ "$file" == "package-lock.json" || "$file" == "yarn.lock" || "$file" == "pnpm-lock.yaml" ]]; then
+    continue
+  fi
   if [ -f "$file" ]; then
     for pattern in "${SECRET_PATTERNS[@]}"; do
       if grep -iE "$pattern" "$file" > /dev/null 2>&1; then
