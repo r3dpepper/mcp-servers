@@ -18,7 +18,7 @@ npm install
 npm run build
 
 # Build a specific server
-cd servers/duckduckgo-search && npm run build
+cd servers/ddg-search && npm run build
 \`\`\`
 
 ## Verification

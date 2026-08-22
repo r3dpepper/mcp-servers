@@ -41,7 +41,7 @@ npm run dev
 
 **Start a single server (recommended for testing):**
 ```bash
-cd servers/duckduckgo-search
+cd servers/ddg-search
 npm run dev
 ```
 
@@ -65,7 +65,7 @@ curl http://localhost:3002/health
 curl -X POST http://localhost:3002/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"duckduckgo_search","arguments":{"query":"TypeScript MCP"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ddg_search","arguments":{"query":"TypeScript MCP"}}}'
 ```
 
 ---
@@ -73,7 +73,7 @@ curl -X POST http://localhost:3002/mcp \
 ## Connect to Claude Code
 
 ```bash
-claude mcp add duckduckgo-search --transport http --scope user http://localhost:3002/mcp
+claude mcp add ddg-search --transport http --scope user http://localhost:3002/mcp
 claude mcp list   # verify connection
 ```
 
@@ -84,7 +84,7 @@ claude mcp list   # verify connection
 ```
 .
 ├── servers/
-│   └── duckduckgo-search/    ← Individual server
+│   └── ddg-search/    ← Individual server
 │       ├── src/
 │       ├── package.json
 │       └── tsconfig.json
@@ -106,7 +106,7 @@ claude mcp list   # verify connection
 lsof -ti:3002 | xargs kill
 
 # Or change the port in .env.local
-DUCKDUCKGO_SEARCH_PORT=3003
+DDG_PORT=3003
 ```
 
 ### Search returns no results

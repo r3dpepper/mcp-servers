@@ -20,11 +20,11 @@ Test the search functionality with sample queries.
 # Health check
 curl -s http://localhost:3002/health | jq .
 
-# Test duckduckgo_search tool
+# Test ddg_search tool
 curl -s -X POST http://localhost:3002/mcp \\
   -H "Content-Type: application/json" \\
   -H "Accept: application/json, text/event-stream" \\
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"duckduckgo_search","arguments":{"query":"'"${ARGUMENTS:-TypeScript MCP"}'"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ddg_search","arguments":{"query":"'"${ARGUMENTS:-TypeScript MCP"}'"}}}'
 \`\`\`
 
 ## Verification

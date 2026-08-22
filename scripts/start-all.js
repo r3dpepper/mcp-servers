@@ -18,10 +18,10 @@ const useStdio = process.argv.includes("--stdio");
 
 const SERVERS = [
   {
-    name: "duckduckgo-search",
-    enabledEnv: "DUCKDUCKGO_SEARCH_ENABLED",
+    name: "ddg-search",
+    enabledEnv: "DDG_ENABLED",
     defaultEnabled: true,
-    dir: resolve(ROOT, "servers/duckduckgo-search"),
+    dir: resolve(ROOT, "servers/ddg-search"),
     color: "\x1b[36m", // cyan
   },
   {

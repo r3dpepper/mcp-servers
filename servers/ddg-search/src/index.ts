@@ -15,13 +15,13 @@ import { checkRateLimit, getRateLimitStatus } from "./rate-limiter.js";
 
 function createMcpServer() {
   const server = new McpServer({
-    name: "duckduckgo-search",
+    name: "ddg-search",
     version: "1.0.0",
   });
 
-  // duckduckgo_search tool
+  // ddg_search tool
   server.registerTool(
-    "duckduckgo_search",
+    "ddg_search",
     {
       description: "Search the web using DuckDuckGo. No API key required.",
       inputSchema: z.object({
@@ -96,9 +96,9 @@ function createMcpServer() {
     }
   );
 
-  // duckduckgo_instant_answer tool
+  // ddg_instant_answer tool
   server.registerTool(
-    "duckduckgo_instant_answer",
+    "ddg_instant_answer",
     {
       description: "Get a structured instant answer from DuckDuckGo. No API key required.",
       inputSchema: z.object({
@@ -122,7 +122,7 @@ function createMcpServer() {
             content: [
               {
                 type: "text",
-                text: `No instant answer found for: "${query}"\n\nTry duckduckgo_search for web results instead.`,
+                text: `No instant answer found for: "${query}"\n\nTry ddg_search for web results instead.`,
               },
             ],
           };
@@ -193,7 +193,7 @@ if (useStdio) {
         res.end(
           JSON.stringify({
             status: "ok",
-            server: "duckduckgo-search",
+            server: "ddg-search",
             version: "1.0.0",
             requiresApiKey: false,
             rateLimit: {

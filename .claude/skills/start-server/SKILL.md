@@ -11,11 +11,11 @@ Start a specific MCP server and verify it's running correctly.
 
 ## Usage
 
-\`/start-server duckduckgo-search\` - Start the DuckDuckGo search server on port 3002
+\`/start-server ddg-search\` - Start the DuckDuckGo search server on port 3002
 
 ## Available Servers
 
-- \`duckduckgo-search\` - DuckDuckGo search MCP server (port 3002)
+- \`ddg-search\` - DuckDuckGo search MCP server (port 3002)
 
 ## Instructions
 
@@ -35,7 +35,7 @@ lsof -ti:3002 2>/dev/null || echo "Port available"
 ### Step 2: Start the server
 
 \`\`\`bash
-cd servers/duckduckgo-search && npm run dev
+cd servers/ddg-search && npm run dev
 \`\`\`
 
 ### Step 3: Verify health

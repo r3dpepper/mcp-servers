@@ -40,8 +40,8 @@
       "Bash(grep *)",
       "Bash(chmod +x *)",
       "WebSearch",
-      "mcp__duckduckgo-search__duckduckgo_search",
-      "mcp__duckduckgo-search__duckduckgo_instant_answer"
+      "mcp__ddg-search__ddg_search",
+      "mcp__ddg-search__ddg_instant_answer"
     ]
   }
 }

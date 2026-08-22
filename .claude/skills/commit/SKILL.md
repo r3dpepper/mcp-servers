@@ -23,7 +23,7 @@ Example:
 Add DuckDuckGo search tool
 
 Summary:
-- Add: servers/duckduckgo-search/src/index.ts
+- Add: servers/ddg-search/src/index.ts
 - Update: README.md
 - Chore: package.json
 ```

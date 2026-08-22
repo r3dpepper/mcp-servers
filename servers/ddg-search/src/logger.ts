@@ -24,7 +24,7 @@ function log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
 
   const entry = {
     level,
-    service: "duckduckgo-search-mcp",
+    service: "ddg-search-mcp",
     message,
     timestamp: new Date().toISOString(),
     ...meta,

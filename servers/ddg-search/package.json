@@ -1,5 +1,5 @@
 {
-  "name": "@mcp-hub/duckduckgo-search",
+  "name": "@mcp-hub/ddg-search",
   "version": "1.0.0",
   "description": "MCP server exposing DuckDuckGo Search as a tool",
   "type": "module",

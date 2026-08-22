@@ -21,14 +21,14 @@ function optionalEnvInt(key: string, fallback: number): number {
 }
 
 export const config = {
-  port: optionalEnvInt("DUCKDUCKGO_SEARCH_PORT", 3002),
-  maxResults: Math.min(optionalEnvInt("DUCKDUCKGO_SEARCH_MAX_RESULTS", 10), 50),
-  requestTimeoutMs: optionalEnvInt("DUCKDUCKGO_TIMEOUT_MS", 10000),
+  port: optionalEnvInt("DDG_PORT", 3002),
+  maxResults: Math.min(optionalEnvInt("DDG_MAX_RESULTS", 10), 50),
+  requestTimeoutMs: optionalEnvInt("DDG_TIMEOUT_MS", 10000),
   transport: optionalEnv("TRANSPORT", "http") as "stdio" | "http",
   nodeEnv: optionalEnv("NODE_ENV", "development"),
   logLevel: optionalEnv("LOG_LEVEL", "info"),
   // Rate limiting
-  rateLimitPerMinute: optionalEnvInt("DUCKDUCKGO_RATE_LIMIT_PER_MINUTE", 10),
+  rateLimitPerMinute: optionalEnvInt("DDG_RATE_LIMIT_PER_MINUTE", 10),
   // Caching
-  cacheTtlSeconds: optionalEnvInt("DUCKDUCKGO_CACHE_TTL_SECONDS", 300),
+  cacheTtlSeconds: optionalEnvInt("DDG_CACHE_TTL_SECONDS", 300),
 };

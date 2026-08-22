@@ -18,7 +18,7 @@ Scaffold a new MCP server following the project patterns.
 ### 1. Copy the template
 
 \`\`\`bash
-cp -r servers/duckduckgo-search servers/$ARGUMENTS
+cp -r servers/ddg-search servers/$ARGUMENTS
 \`\`\`
 
 ### 2. Update package.json
@@ -37,14 +37,14 @@ In \`servers/$ARGUMENTS/src/config.ts\`:
 
 \`\`\`bash
 mkdir -p docker/$ARGUMENTS
-cp docker/duckduckgo-search/Dockerfile docker/$ARGUMENTS/Dockerfile
+cp docker/ddg-search/Dockerfile docker/$ARGUMENTS/Dockerfile
 \`\`\`
 
 Edit the Dockerfile to update the workspace path and port.
 
 ### 5. Register in docker-compose.yml
 
-Add service entry following the \`duckduckgo-search\` pattern.
+Add service entry following the \`ddg-search\` pattern.
 
 ### 6. Update documentation
 
