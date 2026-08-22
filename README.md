@@ -94,8 +94,8 @@ claude mcp add docker --transport stdio --scope user --env TRANSPORT=stdio -- \
 # 1. Install all dependencies
 npm install
 
-# 2. Copy environment template
-cp .env.example .env.local
+# 2. Copy environment template (must be named `.env` — servers load dotenv from `.env`)
+cp .env.example .env
 
 # 3. Start all enabled servers
 npm run dev
