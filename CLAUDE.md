@@ -51,7 +51,14 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 │       └── tsconfig.json
 ├── docker/                           ← Dockerfiles per server
 ├── scripts/
-│   └── start-all.js                  ← Local dev: starts all servers
+│   ├── start-all.js                  ← Local dev: starts all servers
+│   ├── stop-all.js                   ← Stops all running servers
+│   ├── stop-memory.js                ← Stops only the memory server
+│   ├── stop-browser.js               ← Stops only the browser server
+│   ├── stop-filesystem.js            ← Stops only the filesystem server
+│   ├── stop-fetch.js                 ← Stops only the fetch server
+│   ├── test-browser-tools.js         ← Tests browser MCP tools
+│   └── manage-mcp-servers.sh         ← Manage MCP servers in Claude Code (add/remove HTTP & stdio)
 ├── docker-compose.yml                ← Docker orchestration
 ├── docs/                             ← Documentation
 │   └── adding-new-server.md          ← Guide for new servers
@@ -87,6 +94,47 @@ npm run stop-memory       # Stop only the memory server
 # Start a single server (for testing)
 cd servers/duckduckgo-search && npm run dev
 ```
+
+## MCP Server Management Script
+
+The `scripts/manage-mcp-servers.sh` script automates adding/removing MCP servers in Claude Code with both HTTP and stdio transports. Server names include the transport suffix (`-http` or `-stdio`) for easy identification.
+
+```bash
+# Make executable (one-time)
+chmod +x scripts/manage-mcp-servers.sh
+
+# Remove all MCP servers (both -http and -stdio variants)
+./scripts/manage-mcp-servers.sh remove
+
+# Add all servers with HTTP transport (named *-http)
+./scripts/manage-mcp-servers.sh add-http
+
+# Add all servers with stdio transport (named *-stdio) - requires build first
+./scripts/manage-mcp-servers.sh add-stdio
+
+# Add both HTTP and stdio transports
+./scripts/manage-mcp-servers.sh add-all
+
+# List currently configured servers
+./scripts/manage-mcp-servers.sh list
+
+# Check which servers are currently running (HTTP health check per port)
+./scripts/manage-mcp-servers.sh status
+
+# Start servers that are not running / stop servers that are running
+./scripts/manage-mcp-servers.sh start
+./scripts/manage-mcp-servers.sh stop
+
+# Restart all servers, or just one by name (stop if running, then start)
+./scripts/manage-mcp-servers.sh restart
+./scripts/manage-mcp-servers.sh restart memory
+```
+
+**Server naming convention:**
+- HTTP: `duckduckgo-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`
+- Stdio: `duckduckgo-search-stdio`, `browser-stdio`, `filesystem-stdio`, `fetch-stdio`, `memory-stdio`, `docker-stdio`
+
+> **Note:** When adding new MCP servers, update the `SERVERS` array in `scripts/manage-mcp-servers.sh` to include the new server name and port.
 
 ---
 

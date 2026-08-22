@@ -15,6 +15,47 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 
 ## Quick Start
 
+### MCP Server Management (Automated)
+
+Use the management script to add/remove all servers with proper transport naming:
+
+```bash
+# Make executable (one-time)
+chmod +x scripts/manage-mcp-servers.sh
+
+# Remove all existing servers
+./scripts/manage-mcp-servers.sh remove
+
+# Add all servers with HTTP transport (named *-http)
+./scripts/manage-mcp-servers.sh add-http
+
+# Add all servers with stdio transport (named *-stdio) - requires build first
+./scripts/manage-mcp-servers.sh add-stdio
+
+# Add both HTTP and stdio transports
+./scripts/manage-mcp-servers.sh add-all
+
+# List currently configured servers
+./scripts/manage-mcp-servers.sh list
+
+# Check which servers are currently running (HTTP health check)
+./scripts/manage-mcp-servers.sh status
+
+# Start servers that are not running / stop servers that are running
+./scripts/manage-mcp-servers.sh start
+./scripts/manage-mcp-servers.sh stop
+
+# Restart all servers, or just one by name
+./scripts/manage-mcp-servers.sh restart
+./scripts/manage-mcp-servers.sh restart memory
+```
+
+**Server naming convention:**
+- HTTP: `duckduckgo-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`
+- Stdio: `duckduckgo-search-stdio`, `browser-stdio`, `filesystem-stdio`, `fetch-stdio`, `memory-stdio`, `docker-stdio`
+
+---
+
 ### Stdio Transport (Recommended for Claude Code)
 
 The Claude Code CLI has known issues with HTTP/SSE transport where headers are stripped. Use stdio transport instead:
@@ -108,7 +149,13 @@ docker compose --env-file .env.local up duckduckgo-search
 ├── docker/               # Dockerfiles for each server
 ├── scripts/              # Development utilities
 │   ├── start-all.js      # Start all servers (HTTP mode)
-│   └── stop-all.js       # Stop all servers
+│   ├── stop-all.js       # Stop all servers
+│   ├── stop-memory.js    # Stop memory server
+│   ├── stop-browser.js   # Stop browser server
+│   ├── stop-filesystem.js # Stop filesystem server
+│   ├── stop-fetch.js     # Stop fetch server
+│   ├── test-browser-tools.js # Test browser tools
+│   └── manage-mcp-servers.sh # Add/remove MCP servers in Claude Code
 ├── docker-compose.yml      # Multi-server orchestration
 └── docs/
     └── adding-new-server.md    # Guide for adding servers

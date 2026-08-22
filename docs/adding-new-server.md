@@ -200,7 +200,27 @@ your-server:
 
 ---
 
-## Step 7 — Update Documentation
+## Step 7 — Update MCP Server Management Script
+
+Update the `SERVERS` array in `scripts/manage-mcp-servers.sh` to include your new server:
+
+```bash
+SERVERS=(
+    "duckduckgo-search:3002"
+    "browser:3003"
+    "filesystem:3004"
+    "fetch:3005"
+    "memory:3006"
+    "docker:3007"
+    "your-server:3008"   # ← Add new server here with its port
+)
+```
+
+This script automatically handles adding/removing servers with both HTTP and stdio transports in Claude Code.
+
+---
+
+## Step 8 — Update Documentation
 
 Update the server tables in `CLAUDE.md` and `README.md`:
 
@@ -289,6 +309,9 @@ Before considering the task complete, verify:
 - [ ] Docker container builds and runs successfully (if Docker support added)
 - [ ] Server is discoverable and usable in Claude Code after adding via `claude mcp add`
 - [ ] No excessive memory usage observed during testing
+- [ ] `./scripts/manage-mcp-servers.sh add-http` adds the new server correctly (named `your-server-http`)
+- [ ] `./scripts/manage-mcp-servers.sh add-stdio` adds the new server correctly (named `your-server-stdio`)
+- [ ] `./scripts/manage-mcp-servers.sh remove` removes all server variants
 
 ---
 
