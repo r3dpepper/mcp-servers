@@ -12,6 +12,7 @@ A multi-server MCP (Model Context Protocol) hub that exposes various tools to AI
 | `fetch` | 3005 | `fetch_url` | No | Security hardening, timeout protection, retry logic |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No | Persistent knowledge graph |
 | `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_system_info`, `docker_system_df` | No | Unix socket connection, retry logic, TTL caching, rate limiting, output truncation |
+| `playwright` *(external)* | 3008 | 24 tools — accessibility-tree browser automation: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_fill_form`, `browser_tabs`, `browser_take_screenshot`, … | No | Published npm package (`@playwright/mcp`), version-pinned; see [docs/adding-external-server.md](./docs/adding-external-server.md) |
 
 ## Quick Start
 

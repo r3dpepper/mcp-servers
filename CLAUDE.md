@@ -19,6 +19,17 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 | `fetch` | 3005 | `fetch_url` | No |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No |
 | `docker` | 3007 | `docker_containers_list`, `docker_container_inspect`, `docker_container_logs`, `docker_container_logs_follow`, `docker_container_stats`, `docker_container_start`, `docker_container_stop`, `docker_container_restart`, `docker_container_remove`, `docker_images_list`, `docker_image_inspect`, `docker_image_remove`, `docker_build`, `docker_events`, `docker_system_info`, `docker_system_df`, `docker_system_prune`, `docker_build_cache_prune` | No |
+| `playwright` *(external)* | 3008 | 24 tools: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_take_screenshot`, `browser_tabs`, `browser_evaluate`, … (full list via `tools/list`) | No |
+
+---
+
+## External MCP servers
+
+`playwright` is not our code — it runs the published npm package
+`@playwright/mcp`, **pinned** to an exact version in
+`start_command_for()` in `scripts/manage-mcp-servers.sh`. External servers are HTTP-only, have no `/health`
+endpoint (status is port-based), and are updated by the ritual in
+[docs/adding-external-server.md](docs/adding-external-server.md).
 
 ---
 

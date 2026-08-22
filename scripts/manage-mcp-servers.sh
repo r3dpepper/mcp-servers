@@ -19,6 +19,7 @@ SERVERS=(
     "fetch:3005"
     "memory:3006"
     "docker:3007"
+    "playwright:3008"
 )
 
 # cc_proxy configuration
@@ -98,6 +99,12 @@ add_stdio() {
 
     for server_info in "${SERVERS[@]}"; do
         IFS=':' read -r name port <<< "$server_info"
+
+        if is_external_server "${name}"; then
+            log_info "Skipping ${name} (external server, HTTP transport only)"
+            continue
+        fi
+
         server_name="${name}-stdio"
         server_path="${PROJECT_ROOT}/servers/${name}/dist/index.js"
 
@@ -193,6 +200,31 @@ is_running() {
     curl -s -m 1 "http://localhost:$1/health" >/dev/null 2>&1
 }
 
+# ── External servers ─────────────────────────────────────────────────────────
+# External servers are published npm packages we run as-is (not code in this
+# repo). See docs/adding-external-server.md for the full guideline.
+
+# Returns 0 for servers that are external packages rather than repo code
+is_external_server() {
+    case "$1" in
+        playwright) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Start command per server. External servers pin their version HERE — bumping
+# the pin below is the whole upstream-update ritual (see adding-external-server.md).
+start_command_for() {
+    case "$1" in
+        playwright)
+            echo "cd '${PROJECT_ROOT}' && npx --yes @playwright/mcp@0.0.79 --port 3008 --headless"
+            ;;
+        *)
+            echo "cd '${PROJECT_ROOT}/servers/$1' && npm run dev"
+            ;;
+    esac
+}
+
 # Resolve the target list for start/stop/restart: all servers, or one named server
 # Sets TARGET_SERVERS array; returns 1 for an unknown name
 resolve_targets() {
@@ -224,14 +256,14 @@ start_one() {
         return 0
     fi
 
-    if [[ ! -d "${PROJECT_ROOT}/servers/${name}" ]]; then
+    if ! is_external_server "${name}" && [[ ! -d "${PROJECT_ROOT}/servers/${name}" ]]; then
         log_error "Server directory not found: ${PROJECT_ROOT}/servers/${name}"
         return 1
     fi
 
     local logfile="${TMPDIR:-/tmp}/mcp-${name}.log"
     log_info "Starting ${name} on port ${port}..."
-    (cd "${PROJECT_ROOT}/servers/${name}" && nohup npm run dev >"${logfile}" 2>&1 &)
+    (nohup bash -c "$(start_command_for "${name}")" >"${logfile}" 2>&1 &)
 
     for _ in $(seq 1 20); do
         if is_running "${port}"; then
@@ -395,7 +427,11 @@ main() {
             echo "Servers managed:"
             for server_info in "${SERVERS[@]}"; do
                 IFS=':' read -r name port <<< "$server_info"
-                echo "  - ${name} (port ${port})"
+                if is_external_server "${name}"; then
+                    echo "  - ${name} (port ${port}) [external package]"
+                else
+                    echo "  - ${name} (port ${port})"
+                fi
             done
             echo ""
             echo "cc_proxy:"

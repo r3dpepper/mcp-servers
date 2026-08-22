@@ -2,6 +2,9 @@
 
 This guide explains how to add a new MCP server to the hub, following the exact same patterns as `ddg-search`, with additional considerations for design, optimization, and verification.
 
+> Wrapping an **existing published MCP package** instead of writing our own?
+> Follow [adding-external-server.md](./adding-external-server.md) instead.
+
 ---
 
 ## Overview
