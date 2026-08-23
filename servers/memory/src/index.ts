@@ -43,7 +43,7 @@ async function save() {
 }
 
 function createMcpServer() {
-  const server = new McpServer({ name: "memory", version: "1.0.0" });
+  const server = new McpServer({ name: "memory", version: "1.1.0" });
 
   // Add tools/list handler for MCP protocol compliance
   server.registerTool(
@@ -139,10 +139,12 @@ function createMcpServer() {
         action: z.enum(["get_entity", "search", "get_graph"]),
         id: z.string().optional(),
         query: z.string().optional(),
-        depth: z.number().int().positive().optional().default(2)
-      })
+        depth: z.number().int().positive().max(5).optional().default(2),
+        direction: z.enum(["out", "in", "both"]).optional().default("both")
+          .describe("For get_graph: which edges to follow out of each node"),
+      }),
     },
-    async (args: { action: string; id?: string; query?: string; depth?: number; }) => {
+    async (args: { action: string; id?: string; query?: string; depth?: number; direction?: string }) => {
       const { action, id, query, depth } = args;
       switch (action) {
         case "get_entity": {
@@ -150,30 +152,90 @@ function createMcpServer() {
           return { content: [{ type: "text", text: JSON.stringify(entity || null) }] };
         }
         case "search": {
-          const q = (query || "").toLowerCase();
-          const results = Object.values(store.entities).filter((e) => e.namespace === NAMESPACE && e.value.toLowerCase().includes(q));
-          return { content: [{ type: "text", text: JSON.stringify(results.slice(0, 10)) }] };
+          // Ranked search across id, type, and value (observations included,
+          // since observations are stored as value text on their own entity)
+          const q = (query || "").toLowerCase().trim();
+          if (!q) {
+            return { content: [{ type: "text", text: JSON.stringify({ error: "query is required for search" }) }] };
+          }
+          const scored = Object.values(store.entities)
+            .filter((e) => e.namespace === NAMESPACE)
+            .map((e) => {
+              const eid = String(e.id ?? "").toLowerCase();
+              const value = String(e.value ?? "").toLowerCase();
+              const type = String(e.type ?? "").toLowerCase();
+              let score = 0;
+              if (eid === q) score += 100;
+              if (value.startsWith(q)) score += 15;
+              if (value.includes(q)) score += 10;
+              if (type.includes(q)) score += 3;
+              if (eid.includes(q)) score += 2;
+              return { entity: e, score };
+            })
+            .filter((r) => r.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 20);
+          const results = scored.map((r) => ({ ...r.entity, _score: r.score }));
+          return { content: [{ type: "text", text: JSON.stringify(results) }] };
         }
         case "get_graph": {
-          const graph: { relations: Array<{ type: string; target: string; }> } = { relations: [] };
-          const queue = [{ current: id, depth: 0 }];
-          const visited = new Set();
-          while (queue.length) {
-            const item = queue.shift();
-            if (!item) break;
-            const { current, depth: d } = item;
-            if (visited.has(current) || d > (depth || 2)) continue;
-            visited.add(current);
-            const ent = store.entities[current as string];
-            if (ent) Object.assign(graph, ent);
+          // BFS traversal returning complete nodes and full relation records.
+          // Follows outgoing, incoming, or both directions up to maxDepth.
+          const startId = id as string;
+          if (!startId) {
+            return { content: [{ type: "text", text: JSON.stringify({ error: "id is required for get_graph traversal" }) }] };
+          }
+          const maxDepth = depth ?? 2;
+          const direction = args.direction ?? "both";
+
+          const nodes: any[] = [];
+          const edges: any[] = [];
+          const seenNodes = new Set<string>();
+          const seenEdges = new Set<string>();
+
+          const queue: Array<{ nodeId: string; d: number }> = [{ nodeId: startId, d: 0 }];
+          while (queue.length > 0) {
+            const { nodeId, d } = queue.shift()!;
+            if (seenNodes.has(nodeId) || d > maxDepth) continue;
+            seenNodes.add(nodeId);
+
+            const ent = store.entities[nodeId];
+            if (ent) nodes.push(ent);
+
             for (const rel of Object.values(store.relations)) {
-              if (rel.source === current) {
-                if (d < (depth || 2)) queue.push({ current: rel.target, depth: d + 1 });
-                graph.relations.push({ type: rel.type, target: rel.target });
+              const isOutgoing = rel.source === nodeId;
+              const isIncoming = rel.target === nodeId;
+              const follows =
+                (isOutgoing && (direction === "out" || direction === "both")) ||
+                (isIncoming && (direction === "in" || direction === "both"));
+              if (!follows) continue;
+
+              if (!seenEdges.has(rel.id)) {
+                seenEdges.add(rel.id);
+                edges.push(rel);
+              }
+
+              if (d < maxDepth) {
+                const neighbor = isOutgoing ? rel.target : rel.source;
+                queue.push({ nodeId: neighbor, d: d + 1 });
               }
             }
           }
-          return { content: [{ type: "text", text: JSON.stringify(graph) }] };
+
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                root: startId,
+                depth: maxDepth,
+                direction,
+                nodeCount: nodes.length,
+                edgeCount: edges.length,
+                nodes,
+                relations: edges,
+              }),
+            }],
+          };
         }
         default:
           return { content: [{ type: "text", text: `Unknown action: ${action}` }] };
@@ -266,7 +328,7 @@ async function main() {
         res.end(JSON.stringify({
           status: "ok",
           server: "memory",
-          version: "1.0.0",
+          version: "1.1.0",
           requiresApiKey: false,
           timestamp: new Date().toISOString(),
         }));
