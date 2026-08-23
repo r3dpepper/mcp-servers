@@ -1,6 +1,6 @@
 {
   "name": "@mcp-hub/fetch",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Fetches URLs and returns content - MCP server for web fetching",
   "keywords": [
     "model-context-protocol",
@@ -29,10 +29,12 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.0",
     "dotenv": "^16.6.1",
+    "turndown": "^7.2.4",
     "zod": "^3.21.4"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
+    "@types/turndown": "^5.0.6",
     "tsx": "^4.10.5",
     "typescript": "^5.0.0"
   }

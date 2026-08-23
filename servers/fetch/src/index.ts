@@ -3,8 +3,19 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer as createHttpServer, IncomingMessage, ServerResponse } from "http";
 import { z } from "zod";
+import TurndownService from "turndown";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
+
+/**
+ * HTML→markdown conversion so agents receive readable documents instead of
+ * markup soup. Non-content elements are dropped before conversion.
+ */
+const turndown = new TurndownService({
+  headingStyle: "atx",
+  codeBlockStyle: "fenced",
+});
+turndown.remove(["script", "style", "noscript", "iframe", "nav", "footer"]);
 
 /**
  * Validate URL scheme to prevent accessing dangerous protocols.
@@ -86,18 +97,22 @@ server.registerTool(
   "fetch_url",
   {
     description:
-      "Fetches a URL and returns its contents as plain text. Large documents are returned " +
-      "in pages — call again with start_index to continue reading where the previous page ended.",
+      "Fetches a URL and returns its contents as markdown (HTML pages are converted; " +
+      "use raw=true for the original markup). Large documents are returned in pages — " +
+      "call again with start_index to continue reading where the previous page ended.",
     inputSchema: z.object({
       url: z.string().url().describe("URL to fetch"),
       max_length: z.number().int().positive().max(200_000).optional()
         .describe(`Maximum number of characters to return (default: ${DEFAULT_MAX_LENGTH})`),
       start_index: z.number().int().min(0).optional()
         .describe("Character offset to start from — use the start_index reported by a previous page"),
+      raw: z.boolean().optional().default(false)
+        .describe("Return the original HTML instead of converting to markdown"),
     }),
   },
-  async (args: { url: string; max_length?: number; start_index?: number }) => {
+  async (args: { url: string; max_length?: number; start_index?: number; raw?: boolean }) => {
     const { url } = args;
+    let responseContentType = "";
 
     // Security: Validate URL scheme
     if (!isValidUrlScheme(url)) {
@@ -143,6 +158,7 @@ server.registerTool(
 
           // Validate content type
           const contentType = response.headers.get("content-type");
+          responseContentType = contentType ?? "";
           const allowedTypes = ["text/", "application/json", "application/xml", "application/javascript"];
           if (contentType && !allowedTypes.some(t => contentType.includes(t))) {
             throw new Error(`Unsupported content type: ${contentType}`);
@@ -161,23 +177,34 @@ server.registerTool(
 
       const text = await withRetry(fetchFn);
 
+      // HTML pages become markdown unless raw markup was requested; other
+      // content types (json/xml/js/text) pass through untouched
+      let content = text;
+      if (!args.raw && /text\/html/i.test(responseContentType)) {
+        try {
+          content = turndown.turndown(text);
+        } catch (err) {
+          logger.warn("HTML→markdown conversion failed; returning raw", { url });
+        }
+      }
+
       // Paginated read: return one slice plus a resume hint, so a huge
       // document cannot flood the caller's context in one shot
       const maxLength = args.max_length ?? DEFAULT_MAX_LENGTH;
       const startIndex = args.start_index ?? 0;
 
-      if (startIndex >= text.length) {
+      if (startIndex >= content.length) {
         return {
-          content: [{ type: "text", text: `No more content — document is ${text.length} characters.` }],
+          content: [{ type: "text", text: `No more content — document is ${content.length} characters.` }],
         };
       }
 
-      const chunk = text.slice(startIndex, startIndex + maxLength);
+      const chunk = content.slice(startIndex, startIndex + maxLength);
       const nextIndex = startIndex + chunk.length;
-      const remaining = text.length - nextIndex;
+      const remaining = content.length - nextIndex;
       const trailer = remaining > 0
-        ? `\n\n[characters ${startIndex}–${nextIndex} of ${text.length}; call again with start_index=${nextIndex} to continue]`
-        : `\n\n[end of document — ${text.length} characters total]`;
+        ? `\n\n[characters ${startIndex}–${nextIndex} of ${content.length}; call again with start_index=${nextIndex} to continue]`
+        : `\n\n[end of document — ${content.length} characters total]`;
 
       return {
         content: [{ type: "text", text: chunk + trailer }],
