@@ -6,7 +6,7 @@
 
 import { exec } from "child_process";
 
-const SERVERS = ["fetch", "filesystem", "browser", "ddg-search", "docker", "memory"];
+const SERVERS = ["fetch", "filesystem", "browser", "ddg-search", "docker", "memory", "email"];
 
 function stopServer(name) {
   console.log(`Stopping ${name}...`);

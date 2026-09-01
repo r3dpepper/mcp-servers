@@ -19,7 +19,8 @@ SERVERS=(
     "fetch:3005"
     "memory:3006"
     "docker:3007"
-    "playwright:3008"
+    "email:3008"
+    "playwright:3009"
 )
 
 # cc_proxy configuration
@@ -217,7 +218,7 @@ is_external_server() {
 start_command_for() {
     case "$1" in
         playwright)
-            echo "cd '${PROJECT_ROOT}' && npx --yes @playwright/mcp@0.0.79 --port 3008 --headless"
+            echo "cd '${PROJECT_ROOT}' && npx --yes @playwright/mcp@0.0.79 --port 3009 --headless"
             ;;
         *)
             echo "cd '${PROJECT_ROOT}/servers/$1' && npm run dev"
