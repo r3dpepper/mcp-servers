@@ -59,6 +59,13 @@ const SERVERS = [
     dir: resolve(ROOT, "servers/memory"),
     color: "\x1b[35m", // magenta
   },
+  {
+    name: "email",
+    enabledEnv: "EMAIL_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/email"),
+    color: "\x1b[31m", // red
+  },
 ];
 
 function startServer(server) {

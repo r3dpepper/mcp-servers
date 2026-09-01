@@ -148,6 +148,45 @@ services:
       mcp.version: "1.0.0"
       mcp.requires_api_key: "false"
 
+  # ── Email MCP Server (multi-provider: IMAP/SMTP, Gmail, Outlook) ──────
+  email:
+    build:
+      context: .
+      dockerfile: docker/email/Dockerfile
+    container_name: mcp-email
+    restart: unless-stopped
+    ports:
+      - "${EMAIL_PORT:-3008}:3008"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      EMAIL_PORT: 3008
+      EMAIL_RATE_LIMIT_PER_MINUTE: ${EMAIL_RATE_LIMIT_PER_MINUTE:-60}
+      EMAIL_MAX_OUTPUT_BYTES: ${EMAIL_MAX_OUTPUT_BYTES:-65536}
+      EMAIL_ATTACHMENT_MAX_BYTES: ${EMAIL_ATTACHMENT_MAX_BYTES:-10485760}
+      EMAIL_DEFAULT_SEARCH_LIMIT: ${EMAIL_DEFAULT_SEARCH_LIMIT:-20}
+      EMAIL_ALLOW_ANY_HOST: ${EMAIL_ALLOW_ANY_HOST:-true}
+      EMAIL_READ_ONLY: ${EMAIL_READ_ONLY:-false}
+      EMAIL_OAUTH_CALLBACK_PORT: ${EMAIL_OAUTH_CALLBACK_PORT:-3009}
+      EMAIL_GMAIL_CLIENT_ID: ${EMAIL_GMAIL_CLIENT_ID:-}
+      EMAIL_GMAIL_CLIENT_SECRET: ${EMAIL_GMAIL_CLIENT_SECRET:-}
+      EMAIL_OUTLOOK_CLIENT_ID: ${EMAIL_OUTLOOK_CLIENT_ID:-}
+      EMAIL_OUTLOOK_CLIENT_SECRET: ${EMAIL_OUTLOOK_CLIENT_SECRET:-}
+      EMAIL_OUTLOOK_TENANT: ${EMAIL_OUTLOOK_TENANT:-common}
+      EMAIL_TRUSTED_HOSTS: ${EMAIL_TRUSTED_HOSTS:-}
+      EMAIL_CREDENTIAL_FILE: /root/.mcp-servers/email-credentials.json
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3008/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "email"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
 # ── Shared network so servers can discover each other ─────────────────────
 networks:
   default:

@@ -19,7 +19,8 @@ This is a **multi-server MCP Hub** that hosts independently deployable MCP serve
 | `fetch` | 3005 | `fetch_url` | No |
 | `memory` | 3006 | `memory_write`, `memory_read`, `memory_manage` | No |
 | `docker` | 3007 | 30 tools: containers (`list/inspect/logs/logs_follow/stats/start/stop/restart/remove/exec/top/rename`), images (`list/inspect/remove/pull`), volumes (`list/create/remove`), networks (`list/create/connect/disconnect/remove`), plus `build/events/system_info/system_df/system_prune/build_cache_prune`. Exec gated behind `DOCKER_ENABLE_EXEC=true` | No |
-| `playwright` *(external)* | 3008 | 24 tools: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_take_screenshot`, `browser_tabs`, `browser_evaluate`, … (full list via `tools/list`) | No |
+| `email` | 3008 | 20 tools across 5 groups: accounts (`list/add/remove/test`), folders (`list/create`), read & search (`list_folders/search/get/get_attachment`), send & drafts (`send/reply/forward/draft_create/draft_list`), organize (`move/delete/mark`), batch (`batch_delete/batch_move/batch_mark`). Multi-provider: IMAP/SMTP, Gmail REST, Outlook Graph. Credentials in OS keychain with encrypted-file fallback. | No |
+| `playwright` *(external)* | 3009 | 24 tools: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_take_screenshot`, `browser_tabs`, `browser_evaluate`, … (full list via `tools/list`) | No |
 
 ---
 
@@ -142,7 +143,7 @@ chmod +x scripts/manage-mcp-servers.sh
 ```
 
 **Server naming convention:**
-- HTTP: `ddg-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`
+- HTTP: `ddg-search-http`, `browser-http`, `filesystem-http`, `fetch-http`, `memory-http`, `docker-http`, `email-http`
 - Stdio: `ddg-search-stdio`, `browser-stdio`, `filesystem-stdio`, `fetch-stdio`, `memory-stdio`, `docker-stdio`
 
 > **Note:** When adding new MCP servers, update the `SERVERS` array in `scripts/manage-mcp-servers.sh` to include the new server name and port.
@@ -178,6 +179,19 @@ chmod +x scripts/manage-mcp-servers.sh
 | `DOCKER_RATE_LIMIT_PER_MINUTE` | 120 | Per-client HTTP rate limit (HTTP transport only) |
 | `DOCKER_MAX_OUTPUT_BYTES` | 65536 | Max tool output size before truncation |
 | `DOCKER_ENABLE_EXEC` | false | Allow running commands inside containers via `docker_container_exec` |
+| `EMAIL_PORT` | 3008 | Email server port |
+| `EMAIL_RATE_LIMIT_PER_MINUTE` | 60 | Per-client HTTP rate limit (HTTP transport only) |
+| `EMAIL_MAX_OUTPUT_BYTES` | 65536 | Cap on any single tool's output before truncation |
+| `EMAIL_ATTACHMENT_MAX_BYTES` | 10485760 | Per-attachment size cap (10MB) for `email_get_attachment` |
+| `EMAIL_DEFAULT_SEARCH_LIMIT` | 20 | Default result count for `email_search` |
+| `EMAIL_ALLOW_ANY_HOST` | true | Set false to enforce `EMAIL_TRUSTED_HOSTS` |
+| `EMAIL_TRUSTED_HOSTS` | _(empty)_ | Comma-separated allowlist of IMAP/SMTP hosts |
+| `EMAIL_READ_ONLY` | false | Set true to block every mutating tool |
+| `EMAIL_OAUTH_CALLBACK_PORT` | 3009 | Local listener port for OAuth redirects |
+| `EMAIL_GMAIL_CLIENT_ID` / `EMAIL_GMAIL_CLIENT_SECRET` | _(unset)_ | OAuth2 credentials for Gmail REST path |
+| `EMAIL_OUTLOOK_CLIENT_ID` / `EMAIL_OUTLOOK_CLIENT_SECRET` | _(unset)_ | OAuth2 credentials for Outlook Graph path |
+| `EMAIL_OUTLOOK_TENANT` | `common` | Microsoft tenant (`common` for multi-tenant) |
+| `EMAIL_CREDENTIAL_FILE` | `~/.mcp-servers/email-credentials.json` | Encrypted credential file (used when OS keychain unavailable) |
 
 ---
 
@@ -233,6 +247,15 @@ chmod +x scripts/manage-mcp-servers.sh
 - **Image pull**: Pull images from registries (build timeout applies)
 - **Process inspection**: `docker top`-style process listing and container rename
 
+### Email
+- **Multi-provider support**: Generic IMAP/SMTP (works with Gmail/Outlook/Yahoo/iCloud/Fastmail/custom via App Passwords), Gmail REST (OAuth, opt-in), Outlook Microsoft Graph (OAuth, opt-in)
+- **OS keychain credential storage**: Account credentials go to the system keychain (macOS Keychain, Linux libsecret, Windows Credential Manager). Falls back to AES-256-GCM encrypted file when the keychain is unavailable (Docker, headless Linux)
+- **Lightweight search by default**: `email_search` returns ~200-char snippets; opt into `returnBody=true` for full bodies
+- **Read-only mode**: `EMAIL_READ_ONLY=true` blocks every mutating tool (send/move/delete/mark/folder_create/batch_*)
+- **Per-client rate limit**: Protects upstream IMAP/SMTP/HTTP providers from runaway clients
+- **Attachment cap**: `EMAIL_ATTACHMENT_MAX_BYTES` (10MB default) prevents LLM context blow-ups
+- **TLS-first**: IMAP/SMTP default to TLS; opt-in `EMAIL_ALLOW_ANY_HOST` for testing
+
 ## Testing a tool manually
 
 ```bash
@@ -285,6 +308,9 @@ claude mcp add memory --transport stdio --scope user --env TRANSPORT=stdio -- \
 
 claude mcp add docker --transport stdio --scope user --env TRANSPORT=stdio -- \
   node /Users/jignesh/Learning/projects/mcp-servers/servers/docker/dist/index.js
+
+claude mcp add email --transport stdio --scope user --env TRANSPORT=stdio -- \
+  node /Users/jignesh/Learning/projects/mcp-servers/servers/email/dist/index.js
 ```
 
 Or configure in `.mcp.json`:
@@ -321,6 +347,11 @@ Or configure in `.mcp.json`:
       "command": "node",
       "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/docker/dist/index.js"],
       "env": { "TRANSPORT": "stdio" }
+    },
+    "email": {
+      "command": "node",
+      "args": ["/Users/jignesh/Learning/projects/mcp-servers/servers/email/dist/index.js"],
+      "env": { "TRANSPORT": "stdio" }
     }
   }
 }
@@ -348,6 +379,9 @@ claude mcp add memory --transport http --scope user http://localhost:3006/mcp
 
 # Docker
 claude mcp add docker --transport http --scope user http://localhost:3007/mcp
+
+# Email (Gmail/Outlook/IMAP)
+claude mcp add email --transport http --scope user http://localhost:3008/mcp
 ```
 
 **Note:** HTTP transport requires proper Accept headers (`application/json` or `text/event-stream`). If you encounter connection issues, switch to Stdio transport.
