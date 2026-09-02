@@ -2,33 +2,70 @@
 /**
  * Start all enabled MCP servers locally.
  *
- * Usage: node scripts/start-all.js
+ * Usage: node scripts/start-all.js [--stdio]
  *
- * Servers are started with `npm run dev` in their respective directories.
+ * Servers are started with `npm run start` (stdio) or `npm run dev` (HTTP) in their respective directories.
  * Each server runs in its own subprocess with colored output.
+ *
+ * --stdio: Start servers in stdio mode (recommended for Claude Code CLI)
  */
 
 import { spawn } from "child_process";
 import { resolve } from "path";
 
 const ROOT = resolve(import.meta.dirname, "..");
+const useStdio = process.argv.includes("--stdio");
 
 const SERVERS = [
   {
-    name: "duckduckgo-search",
-    enabledEnv: "DUCKDUCKGO_SEARCH_ENABLED",
+    name: "ddg-search",
+    enabledEnv: "DDG_ENABLED",
     defaultEnabled: true,
-    dir: resolve(ROOT, "servers/duckduckgo-search"),
+    dir: resolve(ROOT, "servers/ddg-search"),
     color: "\x1b[36m", // cyan
   },
-  // Add new servers here:
-  // {
-  //   name: "github",
-  //   enabledEnv: "GITHUB_ENABLED",
-  //   defaultEnabled: true,
-  //   dir: resolve(ROOT, "servers/github"),
-  //   color: "\x1b[33m", // yellow
-  // },
+  {
+    name: "browser",
+    enabledEnv: "BROWSER_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/browser"),
+    color: "\x1b[35m", // magenta
+  },
+  {
+    name: "filesystem",
+    enabledEnv: "FILESYSTEM_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/filesystem"),
+    color: "\x1b[33m", // yellow
+  },
+  {
+    name: "fetch",
+    enabledEnv: "FETCH_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/fetch"),
+    color: "\x1b[32m", // green
+  },
+  {
+    name: "docker",
+    enabledEnv: "DOCKER_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/docker"),
+    color: "\x1b[34m", // blue
+  },
+  {
+    name: "memory",
+    enabledEnv: "MEMORY_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/memory"),
+    color: "\x1b[35m", // magenta
+  },
+  {
+    name: "email",
+    enabledEnv: "EMAIL_ENABLED",
+    defaultEnabled: true,
+    dir: resolve(ROOT, "servers/email"),
+    color: "\x1b[31m", // red
+  },
 ];
 
 function startServer(server) {
@@ -40,19 +77,31 @@ function startServer(server) {
 
   console.log(`${server.color}▶ ${server.name}\x1b[0m starting...`);
 
-  const proc = spawn("npm", ["run", "dev"], {
+  const env = useStdio
+    ? { ...process.env, TRANSPORT: "stdio" }
+    : process.env;
+
+  // Use 'npm run start' for stdio (uses built dist/index.js)
+  // Use 'npm run dev' for HTTP (uses tsx watch for hot reload)
+  const npmScript = useStdio ? "start" : "dev";
+
+  const proc = spawn(`npm run ${npmScript}`, {
     cwd: server.dir,
     shell: true,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: useStdio ? "inherit" : ["ignore", "pipe", "pipe"],
+    env,
   });
 
-  proc.stdout.on("data", (data) => {
-    process.stdout.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
-  });
+  // Only attach event handlers for non-stdio mode (where stdio is piped)
+  if (!useStdio) {
+    proc.stdout.on("data", (data) => {
+      process.stdout.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
+    });
 
-  proc.stderr.on("data", (data) => {
-    process.stderr.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
-  });
+    proc.stderr.on("data", (data) => {
+      process.stderr.write(`${server.color}[${server.name}]\x1b[0m ${data}`);
+    });
+  }
 
   proc.on("exit", (code) => {
     if (code !== null) {

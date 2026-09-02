@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ── MCP Hub — Docker Compose ─────────────────────────────────────────────────
 #
 # Usage:
@@ -9,7 +7,7 @@ version: "3.9"
 #
 # To run a single server:
 #   docker compose --env-file .env.local up google-search
-#   docker compose --env-file .env.local up duckduckgo-search
+#   docker compose --env-file .env.local up ddg-search
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -17,7 +15,7 @@ services:
   # ── Google Search MCP Server (requires API key) ──────────────────────────
   google-search:
     build:
-      context: ..
+      context: .
       dockerfile: docker/google-search/Dockerfile
     container_name: mcp-google-search
     restart: unless-stopped
@@ -42,19 +40,19 @@ services:
       mcp.requires_api_key: "true"
 
   # ── DuckDuckGo Search MCP Server (no API key needed) ────────────────────
-  duckduckgo-search:
+  ddg-search:
     build:
-      context: ..
-      dockerfile: docker/duckduckgo-search/Dockerfile
-    container_name: mcp-duckduckgo-search
+      context: .
+      dockerfile: docker/ddg-search/Dockerfile
+    container_name: mcp-ddg-search
     restart: unless-stopped
     ports:
-      - "${DUCKDUCKGO_SEARCH_PORT:-3002}:3002"
+      - "${DDG_PORT:-3002}:3002"
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DUCKDUCKGO_SEARCH_MAX_RESULTS: ${DUCKDUCKGO_SEARCH_MAX_RESULTS:-10}
-      DUCKDUCKGO_TIMEOUT_MS: ${DUCKDUCKGO_TIMEOUT_MS:-10000}
+      DDG_MAX_RESULTS: ${DDG_MAX_RESULTS:-10}
+      DDG_TIMEOUT_MS: ${DDG_TIMEOUT_MS:-10000}
       TRANSPORT: http
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
@@ -63,7 +61,129 @@ services:
       retries: 3
       start_period: 10s
     labels:
-      mcp.server: "duckduckgo-search"
+      mcp.server: "ddg-search"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
+  # ── Browser MCP Server (no API key needed) ────────────────────────────────
+  browser:
+    build:
+      context: docker/browser
+      dockerfile: docker/browser/Dockerfile
+    container_name: mcp-browser
+    restart: unless-stopped
+    ports:
+      - "${BROWSER_PORT:-3003}:3003"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      BROWSER_MAX_CONTEXTS: ${BROWSER_MAX_CONTEXTS:-3}
+      BROWSER_CONTEXT_TIMEOUT: ${BROWSER_CONTEXT_TIMEOUT:-30000}
+      BROWSER_NAV_TIMEOUT: ${BROWSER_NAV_TIMEOUT:-15000}
+      BROWSER_TIMEOUT_MS: ${BROWSER_TIMEOUT_MS:-10000}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "browser"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
+  # ── Docker MCP Server (no API key needed) ──────────────────────────────
+  docker:
+    build:
+      context: .
+      dockerfile: docker/docker/Dockerfile
+    container_name: mcp-docker
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_PORT:-3007}:3007"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DOCKER_PORT: 3007
+      DOCKER_API_VERSION: ${DOCKER_API_VERSION:-v1.47}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "docker"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
+  # ── Fetch MCP Server (no API key needed) ────────────────────────────────
+  fetch:
+    build:
+      context: .
+      dockerfile: docker/fetch/Dockerfile
+    container_name: mcp-fetch
+    restart: unless-stopped
+    ports:
+      - "${FETCH_PORT:-3005}:3005"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      FETCH_PORT: 3005
+      FETCH_TIMEOUT_MS: ${FETCH_TIMEOUT_MS:-30000}
+      FETCH_MAX_CONTENT_LENGTH: ${FETCH_MAX_CONTENT_LENGTH:-1048576}
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "fetch"
+      mcp.version: "1.0.0"
+      mcp.requires_api_key: "false"
+
+  # ── Email MCP Server (multi-provider: IMAP/SMTP, Gmail, Outlook) ──────
+  email:
+    build:
+      context: .
+      dockerfile: docker/email/Dockerfile
+    container_name: mcp-email
+    restart: unless-stopped
+    ports:
+      - "${EMAIL_PORT:-3008}:3008"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      EMAIL_PORT: 3008
+      EMAIL_RATE_LIMIT_PER_MINUTE: ${EMAIL_RATE_LIMIT_PER_MINUTE:-60}
+      EMAIL_MAX_OUTPUT_BYTES: ${EMAIL_MAX_OUTPUT_BYTES:-65536}
+      EMAIL_ATTACHMENT_MAX_BYTES: ${EMAIL_ATTACHMENT_MAX_BYTES:-10485760}
+      EMAIL_DEFAULT_SEARCH_LIMIT: ${EMAIL_DEFAULT_SEARCH_LIMIT:-20}
+      EMAIL_ALLOW_ANY_HOST: ${EMAIL_ALLOW_ANY_HOST:-true}
+      EMAIL_READ_ONLY: ${EMAIL_READ_ONLY:-false}
+      EMAIL_OAUTH_CALLBACK_PORT: ${EMAIL_OAUTH_CALLBACK_PORT:-3009}
+      EMAIL_GMAIL_CLIENT_ID: ${EMAIL_GMAIL_CLIENT_ID:-}
+      EMAIL_GMAIL_CLIENT_SECRET: ${EMAIL_GMAIL_CLIENT_SECRET:-}
+      EMAIL_OUTLOOK_CLIENT_ID: ${EMAIL_OUTLOOK_CLIENT_ID:-}
+      EMAIL_OUTLOOK_CLIENT_SECRET: ${EMAIL_OUTLOOK_CLIENT_SECRET:-}
+      EMAIL_OUTLOOK_TENANT: ${EMAIL_OUTLOOK_TENANT:-common}
+      EMAIL_TRUSTED_HOSTS: ${EMAIL_TRUSTED_HOSTS:-}
+      EMAIL_CREDENTIAL_FILE: /root/.mcp-servers/email-credentials.json
+      TRANSPORT: http
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3008/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      mcp.server: "email"
       mcp.version: "1.0.0"
       mcp.requires_api_key: "false"
 

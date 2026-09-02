@@ -3,15 +3,30 @@
   "version": "1.0.0",
   "description": "MCP Hub — Multi-server MCP orchestration",
   "private": true,
+  "type": "module",
   "workspaces": [
     "servers/*"
   ],
   "scripts": {
     "dev": "node scripts/start-all.js",
-    "build": "npm run build --workspaces",
+    "dev:stdio": "node scripts/start-all.js --stdio",
+    "stop": "node scripts/stop-all.js",
+    "stop-browser": "node scripts/stop-browser.js",
+    "stop-filesystem": "node scripts/stop-filesystem.js",
+    "stop-fetch": "node scripts/stop-fetch.js",
+    "stop-memory": "node scripts/stop-memory.js",
+    "start-memory": "cd servers/memory && npm run dev",
+    "start-browser": "cd servers/browser && npm run dev",
+    "start-filesystem": "cd servers/filesystem && npm run dev",
+    "start-fetch": "cd servers/fetch && npm run dev",
+    "build": "npm run build --workspaces --if-present",
     "start": "node scripts/start-all.js"
   },
   "devDependencies": {
     "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server-filesystem": "^2026.1.14",
+    "dotenv": "^17.4.2"
   }
 }

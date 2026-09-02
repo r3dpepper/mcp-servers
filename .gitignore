@@ -9,6 +9,7 @@ dist/
 .vercel/
 
 # Environment files
+.env
 .env.local
 .env.*.local
 
@@ -31,3 +32,9 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Plans
+plans/
+
+# Playwright MCP runtime cache
+.playwright-mcp/

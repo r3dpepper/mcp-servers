@@ -55,7 +55,7 @@ or Docker Compose:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "url": "http://localhost:3002/mcp"
     },
     "google-search": {
@@ -76,14 +76,14 @@ The server does **not** need to be running beforehand.
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "command": "node",
       "args": [
-        "/absolute/path/to/mcp-hub/servers/duckduckgo-search/dist/index.js",
+        "/absolute/path/to/mcp-hub/servers/ddg-search/dist/index.js",
         "--stdio"
       ],
       "env": {
-        "DUCKDUCKGO_SEARCH_PORT": "3002",
+        "DDG_PORT": "3002",
         "LOG_LEVEL": "info"
       }
     },
@@ -105,7 +105,7 @@ The server does **not** need to be running beforehand.
 
 > **Build first** for STDIO mode:
 > ```bash
-> cd servers/duckduckgo-search && npm run build
+> cd servers/ddg-search && npm run build
 > cd servers/google-search && npm run build
 > ```
 
@@ -137,7 +137,7 @@ Claude Code is the terminal-based coding agent. It has a dedicated
 
 ```bash
 # Add DuckDuckGo (works immediately, no API key)
-claude mcp add duckduckgo-search --transport http http://localhost:3002/mcp
+claude mcp add ddg-search --transport http http://localhost:3002/mcp
 
 # Add Google Search
 claude mcp add google-search --transport http http://localhost:3001/mcp
@@ -147,9 +147,9 @@ claude mcp add google-search --transport http http://localhost:3001/mcp
 
 ```bash
 # DuckDuckGo via STDIO
-claude mcp add duckduckgo-search \
+claude mcp add ddg-search \
   --transport stdio \
-  -- node /absolute/path/to/mcp-hub/servers/duckduckgo-search/dist/index.js --stdio
+  -- node /absolute/path/to/mcp-hub/servers/ddg-search/dist/index.js --stdio
 
 # Google Search via STDIO (pass env vars with -e)
 claude mcp add google-search \
@@ -165,7 +165,7 @@ By default `claude mcp add` saves to the **current project** (`.mcp.json`
 in the working directory). To add globally across all projects:
 
 ```bash
-claude mcp add duckduckgo-search \
+claude mcp add ddg-search \
   --transport http \
   --scope global \
   http://localhost:3002/mcp
@@ -178,13 +178,13 @@ claude mcp add duckduckgo-search \
 claude mcp list
 
 # Show details for one server
-claude mcp get duckduckgo-search
+claude mcp get ddg-search
 
 # Remove a server
-claude mcp remove duckduckgo-search
+claude mcp remove ddg-search
 
 # Remove globally
-claude mcp remove duckduckgo-search --scope global
+claude mcp remove ddg-search --scope global
 ```
 
 ### The .mcp.json file (project-level)
@@ -196,7 +196,7 @@ and commit it to share with your team:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "type": "http",
       "url": "http://localhost:3002/mcp"
     },
@@ -240,8 +240,8 @@ claude mcp list
 curl -s http://localhost:3002/health
 
 # Re-add if the URL changed
-claude mcp remove duckduckgo-search
-claude mcp add duckduckgo-search --transport http http://localhost:3002/mcp
+claude mcp remove ddg-search
+claude mcp add ddg-search --transport http http://localhost:3002/mcp
 
 # View Claude Code logs (macOS)
 tail -f ~/Library/Logs/Claude\ Code/*.log
@@ -261,7 +261,7 @@ Create or edit `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "url": "http://localhost:3002/mcp"
     },
     "google-search": {
@@ -278,7 +278,7 @@ Create `.cursor/mcp.json` in your project root:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "url": "http://localhost:3002/mcp"
     }
   }
@@ -292,10 +292,10 @@ Create `.cursor/mcp.json` in your project root:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "command": "node",
       "args": [
-        "/absolute/path/to/mcp-hub/servers/duckduckgo-search/dist/index.js",
+        "/absolute/path/to/mcp-hub/servers/ddg-search/dist/index.js",
         "--stdio"
       ]
     },
@@ -353,7 +353,7 @@ Windsurf (by Codeium) supports MCP via a global config file.
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "serverUrl": "http://localhost:3002/mcp"
     },
     "google-search": {
@@ -370,10 +370,10 @@ Windsurf (by Codeium) supports MCP via a global config file.
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "command": "node",
       "args": [
-        "/absolute/path/to/mcp-hub/servers/duckduckgo-search/dist/index.js",
+        "/absolute/path/to/mcp-hub/servers/ddg-search/dist/index.js",
         "--stdio"
       ],
       "env": {
@@ -415,7 +415,7 @@ Add an `"context_servers"` section to your existing `settings.json`:
 ```json
 {
   "context_servers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "source": "custom",
       "configuration": {
         "type": "url",
@@ -438,14 +438,14 @@ Add an `"context_servers"` section to your existing `settings.json`:
 ```json
 {
   "context_servers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "source": "custom",
       "configuration": {
         "type": "stdio",
         "command": {
           "path": "node",
           "args": [
-            "/absolute/path/to/mcp-hub/servers/duckduckgo-search/dist/index.js",
+            "/absolute/path/to/mcp-hub/servers/ddg-search/dist/index.js",
             "--stdio"
           ],
           "env": {
@@ -489,7 +489,7 @@ Add an `"mcpServers"` array to your existing config:
   "models": [ ... ],
   "mcpServers": [
     {
-      "name": "duckduckgo-search",
+      "name": "ddg-search",
       "transport": {
         "type": "http",
         "url": "http://localhost:3002/mcp"
@@ -512,12 +512,12 @@ Add an `"mcpServers"` array to your existing config:
 {
   "mcpServers": [
     {
-      "name": "duckduckgo-search",
+      "name": "ddg-search",
       "transport": {
         "type": "stdio",
         "command": "node",
         "args": [
-          "/absolute/path/to/mcp-hub/servers/duckduckgo-search/dist/index.js",
+          "/absolute/path/to/mcp-hub/servers/ddg-search/dist/index.js",
           "--stdio"
         ],
         "env": {
@@ -534,7 +534,7 @@ Add an `"mcpServers"` array to your existing config:
 1. Save `config.json` — Continue reloads automatically
 2. Open Continue sidebar in VS Code
 3. In the chat, type `@` to see available context providers including your MCP tools
-4. Test: *"@duckduckgo-search find recent articles about MCP servers"*
+4. Test: *"@ddg-search find recent articles about MCP servers"*
 
 ---
 
@@ -557,7 +557,7 @@ Open `settings.json` (Cmd+Shift+P → "Open User Settings (JSON)") and add:
 ```json
 {
   "cline.mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "url": "http://localhost:3002/mcp",
       "disabled": false
     },
@@ -573,7 +573,7 @@ Open `settings.json` (Cmd+Shift+P → "Open User Settings (JSON)") and add:
 ```json
 {
   "roo-cline.mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "url": "http://localhost:3002/mcp",
       "disabled": false
     },
@@ -590,10 +590,10 @@ Open `settings.json` (Cmd+Shift+P → "Open User Settings (JSON)") and add:
 ```json
 {
   "cline.mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "command": "node",
       "args": [
-        "/absolute/path/to/mcp-hub/servers/duckduckgo-search/dist/index.js",
+        "/absolute/path/to/mcp-hub/servers/ddg-search/dist/index.js",
         "--stdio"
       ],
       "disabled": false
@@ -641,7 +641,7 @@ curl -s -X POST http://localhost:3002/mcp \
     "id": 2,
     "method": "tools/call",
     "params": {
-      "name": "duckduckgo_search",
+      "name": "ddg_search",
       "arguments": {
         "query": "Model Context Protocol specification",
         "num_results": 5
@@ -657,7 +657,7 @@ curl -s -X POST http://localhost:3002/mcp \
     "id": 3,
     "method": "tools/call",
     "params": {
-      "name": "duckduckgo_instant_answer",
+      "name": "ddg_instant_answer",
       "arguments": { "query": "speed of light" }
     }
   }' | python3 -m json.tool
@@ -706,7 +706,7 @@ def call_mcp_tool(server_url: str, tool_name: str, arguments: dict):
 # DuckDuckGo — no API key needed
 text = call_mcp_tool(
     "http://localhost:3002",
-    "duckduckgo_search",
+    "ddg_search",
     {"query": "Python asyncio tutorial", "num_results": 5},
 )
 print(text)
@@ -737,7 +737,7 @@ async function callMcpTool(
 // Usage
 const result = await callMcpTool(
   "http://localhost:3002",
-  "duckduckgo_instant_answer",
+  "ddg_instant_answer",
   { query: "32 celsius in fahrenheit" }
 );
 console.log(result);
@@ -752,7 +752,7 @@ Once deployed to AWS, replace `localhost` with your public IP or ALB hostname:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "url": "http://YOUR_AWS_IP:3002/mcp"
     },
     "google-search": {
@@ -766,8 +766,8 @@ With HTTPS + a custom domain:
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
-      "url": "https://mcp.yourdomain.com/duckduckgo/mcp"
+    "ddg-search": {
+      "url": "https://mcp.yourdomain.com/ddg-search/mcp"
     }
   }
 }
@@ -796,7 +796,7 @@ See [setup-aws.md](setup-aws.md) for how to set up the load balancer and domain.
 
 | Server | HTTP URL | Tools |
 |--------|----------|-------|
-| DuckDuckGo Search | `http://localhost:3002/mcp` | `duckduckgo_search`, `duckduckgo_instant_answer` |
+| DuckDuckGo Search | `http://localhost:3002/mcp` | `ddg_search`, `ddg_instant_answer` |
 | Google Search | `http://localhost:3001/mcp` | `google_search`, `google_image_search`, `google_news_search` |
 
 ---
@@ -810,7 +810,7 @@ it automatically; other tools can use it as a reference.
 ```json
 {
   "mcpServers": {
-    "duckduckgo-search": {
+    "ddg-search": {
       "type": "http",
       "url": "http://localhost:3002/mcp"
     },
@@ -826,7 +826,7 @@ it automatically; other tools can use it as a reference.
 
 ```bash
 # Add both servers to the current project scope
-claude mcp add duckduckgo-search --transport http http://localhost:3002/mcp
+claude mcp add ddg-search --transport http http://localhost:3002/mcp
 claude mcp add google-search --transport http http://localhost:3001/mcp
 
 # .mcp.json is now written — commit it
@@ -853,8 +853,8 @@ and Claude Code picks up the servers automatically — no manual config needed.
 | Continue tools not shown | Missing `mcpServers` array | Must be a top-level array, not nested under `models` |
 | STDIO mode: server not found | Wrong absolute path | Run `pwd` in `mcp-hub` dir to get the correct prefix |
 | STDIO mode: env vars not passed | Not using `-e` flag (Claude Code) | Use `claude mcp add ... -e KEY=value ...` |
-| Google search fails with 429 | Daily quota exhausted (100/day free) | Switch to `duckduckgo-search` in tool config |
-| DuckDuckGo returns empty results | Temporary rate-limit | Wait 30s and retry; check `DUCKDUCKGO_TIMEOUT_MS` |
+| Google search fails with 429 | Daily quota exhausted (100/day free) | Switch to `ddg-search` in tool config |
+| DuckDuckGo returns empty results | Temporary rate-limit | Wait 30s and retry; check `DDG_TIMEOUT_MS` |
 
 ---
 
@@ -865,7 +865,7 @@ Before debugging tool-side config, always confirm the server itself is healthy:
 ```bash
 # 1. Health check
 curl http://localhost:3002/health
-# Expected: {"status":"ok","server":"duckduckgo-search",...}
+# Expected: {"status":"ok","server":"ddg-search",...}
 
 # 2. List tools (MCP tools/list)
 curl -s -X POST http://localhost:3002/mcp \
@@ -881,7 +881,7 @@ curl -s -X POST http://localhost:3002/mcp \
     "id": 1,
     "method": "tools/call",
     "params": {
-      "name": "duckduckgo_search",
+      "name": "ddg_search",
       "arguments": { "query": "hello world", "num_results": 2 }
     }
   }' | python3 -m json.tool
